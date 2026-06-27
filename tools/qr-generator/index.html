@@ -372,7 +372,9 @@
         res.shift();
         res.push(0);
         if (factor !== 0) {
-          for (let j = 0; j < ecLen; j++) res[j] ^= gfMul(gen[j], factor);
+          // gen is monic (gen[0] === 1, the leading x^ecLen term); synthetic
+          // division skips it and uses the remaining coefficients gen[1..ecLen].
+          for (let j = 0; j < ecLen; j++) res[j] ^= gfMul(gen[j + 1], factor);
         }
       }
       return res;
