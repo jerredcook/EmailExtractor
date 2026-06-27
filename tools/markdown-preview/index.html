@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Preview</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 1180px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 1180px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── tool-specific ── */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  .toolbar .spacer { flex: 1; min-width: 8px; }
+
+  .panes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .pane { display: flex; flex-direction: column; min-width: 0; }
+  .pane .card { display: flex; flex-direction: column; flex: 1; }
+
+  #editor {
+    flex: 1;
+    min-height: 480px;
+    border: none;
+    border-radius: 0 0 4px 4px;
+    resize: none;
+    font-size: 13px;
+    line-height: 1.6;
+    tab-size: 2;
+  }
+  #editor:focus { border: none; }
+
+  .preview {
+    flex: 1;
+    min-height: 480px;
+    padding: 24px 26px;
+    overflow-x: auto;
+    line-height: 1.65;
+    font-size: 14px;
+  }
+
+  /* rendered markdown styling, scoped to .preview so only our output is themed */
+  .preview > *:first-child { margin-top: 0; }
+  .preview > *:last-child { margin-bottom: 0; }
+  .preview h1, .preview h2, .preview h3,
+  .preview h4, .preview h5, .preview h6 {
+    font-family: 'Syne', sans-serif;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 1.4em 0 0.6em;
+    color: var(--text);
+  }
+  .preview h1 { font-size: 1.9em; font-weight: 800; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: .25em; }
+  .preview h2 { font-size: 1.5em; font-weight: 800; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: .2em; }
+  .preview h3 { font-size: 1.25em; font-weight: 700; color: var(--accent2); }
+  .preview h4 { font-size: 1.08em; font-weight: 700; color: var(--accent2); }
+  .preview h5 { font-size: 0.98em; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .preview h6 { font-size: 0.9em; font-weight: 700; color: var(--muted); }
+  .preview p { margin: 0.8em 0; }
+  .preview a { color: var(--accent2); text-decoration: underline; text-underline-offset: 2px; }
+  .preview a:hover { color: var(--accent); }
+  .preview strong { color: #fff; font-weight: 700; }
+  .preview em { font-style: italic; }
+  .preview del { color: var(--muted); }
+  .preview ul, .preview ol { margin: 0.8em 0; padding-left: 1.6em; }
+  .preview li { margin: 0.3em 0; }
+  .preview li > ul, .preview li > ol { margin: 0.3em 0; }
+  .preview hr { border: none; border-top: 1px solid var(--border); margin: 1.6em 0; }
+  .preview img { max-width: 100%; border-radius: 4px; border: 1px solid var(--border); }
+
+  .preview code {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.88em;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--accent);
+  }
+  .preview pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 1em 0;
+    line-height: 1.5;
+  }
+  .preview pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text);
+    font-size: 0.85em;
+  }
+
+  .preview blockquote {
+    margin: 1em 0;
+    padding: 4px 16px;
+    border-left: 3px solid var(--accent);
+    background: rgba(232,255,71,0.04);
+    color: #cfcfcf;
+  }
+  .preview blockquote blockquote {
+    margin: 0.6em 0;
+    border-left-color: var(--accent2);
+    background: rgba(71,255,232,0.04);
+  }
+
+  .preview table {
+    border-collapse: collapse;
+    margin: 1em 0;
+    width: 100%;
+    font-size: 0.92em;
+  }
+  .preview th, .preview td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .preview th { background: var(--surface2); color: var(--accent2); font-weight: 700; }
+  .preview tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+
+  @media (max-width: 760px) {
+    .panes { grid-template-columns: 1fr; }
+    #editor, .preview { min-height: 300px; }
+  }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>Markdown<span>Preview</span></h1>
+  <p class="subtitle">Write Markdown and see it rendered live, side by side — a private scratchpad that never leaves your browser.</p>
+</header>
+
+<div class="main">
+
+  <div class="toolbar">
+    <button class="btn-secondary" onclick="loadSample()">Load sample</button>
+    <div class="spacer"></div>
+    <button class="tool-btn" onclick="copyHtml()">Copy HTML</button>
+    <button class="tool-btn" onclick="downloadHtml()">Download .html</button>
+    <button class="tool-btn" onclick="clearAll()">Clear</button>
+  </div>
+
+  <div class="panes">
+    <div class="pane">
+      <div class="card">
+        <div class="card-header">
+          <span><span class="step">1</span>Markdown</span>
+          <span>source</span>
+        </div>
+        <textarea id="editor" spellcheck="false" placeholder="# Start typing Markdown…"></textarea>
+      </div>
+    </div>
+
+    <div class="pane">
+      <div class="card">
+        <div class="card-header">
+          <span><span class="step">2</span>Preview</span>
+          <span>rendered</span>
+        </div>
+        <div class="preview" id="preview"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  Self-contained Markdown → HTML parser (CommonMark-ish subset).
+  //
+  //  XSS model: the WHOLE source is HTML-escaped up front, so any raw `<script>`
+  //  or other tag in the input becomes inert text. Every transform below
+  //  operates on already-escaped text and only ever emits the tags WE create.
+  //  URLs in links/images are additionally sanitized (no javascript:/vbscript:,
+  //  data: allowed only for images). Nothing here ever assigns raw input to
+  //  innerHTML — we build a string from escaped pieces.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Sanitize a link/image URL. Input is the RAW (unescaped) url string.
+  // Returns a safe, html-escaped url, or '' to drop the link entirely.
+  function safeUrl(raw, isImage){
+    let u = raw.trim();
+    // Strip surrounding angle brackets <url> form (already escaped at this point? no — runs on raw)
+    if (u.startsWith('<') && u.endsWith('>')) u = u.slice(1, -1).trim();
+    // Decode common entities/whitespace tricks before checking the scheme.
+    const probe = u.replace(/[\s\x00-\x1f]+/g, '').toLowerCase();
+    if (/^(javascript|vbscript):/.test(probe)) return '';
+    if (/^data:/.test(probe)) {
+      // allow data: only for images, and only image/* payloads
+      if (!(isImage && /^data:image\//.test(probe))) return '';
+    }
+    return escapeHtml(u);
+  }
+
+  // Inline-level rendering. `s` is ALREADY html-escaped text.
+  function renderInline(s){
+    // Code spans first — their contents must not be touched by other inline rules.
+    // Placeholder them out, process the rest, then restore.
+    const codes = [];
+    s = s.replace(/(`+)([\s\S]*?)\1/g, (m, ticks, code) => {
+      // CommonMark: strip a single leading/trailing space if content isn't all spaces
+      let c = code;
+      if (c.length > 1 && c.startsWith(' ') && c.endsWith(' ') && c.trim() !== '') c = c.slice(1, -1);
+      const i = codes.push('<code>' + c + '</code>') - 1;
+      return '\x00C' + i + '\x00';
+    });
+
+    // Images:  ![alt](url "title")   (before links)
+    s = s.replace(/!\[([^\]]*)\]\(\s*([^)]*?)\s*\)/g, (m, alt, target) => {
+      const { url, title } = splitTarget(target);
+      const safe = safeUrl(unescapeForUrl(url), true);
+      if (!safe) return escapeAlready(alt); // drop unsafe image, keep alt text
+      const t = title ? ' title="' + title + '"' : '';
+      return '<img src="' + safe + '" alt="' + alt + '"' + t + '>';
+    });
+
+    // Links:  [text](url "title")
+    s = s.replace(/\[([^\]]*)\]\(\s*([^)]*?)\s*\)/g, (m, text, target) => {
+      const { url, title } = splitTarget(target);
+      const safe = safeUrl(unescapeForUrl(url), false);
+      if (!safe) return m; // leave the literal text if url is unsafe
+      const t = title ? ' title="' + title + '"' : '';
+      return '<a href="' + safe + '"' + t + ' target="_blank" rel="noopener noreferrer">' + renderInline(text) + '</a>';
+    });
+
+    // Autolink bare URLs (http/https) not already inside a tag.
+    s = s.replace(/(^|[\s(])((?:https?:\/\/)[^\s<>()]+[^\s<>().,;:!?])/g, (m, pre, url) => {
+      const safe = safeUrl(unescapeForUrl(url), false);
+      if (!safe) return m;
+      return pre + '<a href="' + safe + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
+    });
+
+    // Bold + italic combinations. Order matters: triple, then double, then single.
+    s = s.replace(/\*\*\*([^\s][\s\S]*?[^\s]|\S)\*\*\*/g, '<strong><em>$1</em></strong>');
+    s = s.replace(/___([^\s][\s\S]*?[^\s]|\S)___/g, '<strong><em>$1</em></strong>');
+    s = s.replace(/\*\*([^\s][\s\S]*?[^\s]|\S)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/__([^\s][\s\S]*?[^\s]|\S)__/g, '<strong>$1</strong>');
+    s = s.replace(/(^|[^\*])\*(?!\s)([\s\S]*?[^\s]|\S)\*/g, '$1<em>$2</em>');
+    s = s.replace(/(^|[^_\w])_(?!\s)([\s\S]*?[^\s]|\S)_(?![\w])/g, '$1<em>$2</em>');
+
+    // Strikethrough
+    s = s.replace(/~~([^\s][\s\S]*?[^\s]|\S)~~/g, '<del>$1</del>');
+
+    // Hard line breaks: two+ trailing spaces or a backslash before the newline.
+    s = s.replace(/( {2,}|\\)\n/g, '<br>\n');
+
+    // Restore code spans.
+    s = s.replace(/\x00C(\d+)\x00/g, (m, i) => codes[+i]);
+    return s;
+  }
+
+  // alt text is already escaped; nothing more to do, but keep a named helper.
+  function escapeAlready(s){ return s; }
+
+  // The url captured from inline markdown has been html-escaped (so & -> &amp;).
+  // Undo just enough to test/store the real url, then safeUrl re-escapes it.
+  function unescapeForUrl(s){
+    return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+  }
+
+  // Split a link/image target into url + optional "title".
+  // Source is already html-escaped, so quotes appear as &quot; / &#39;.
+  function splitTarget(target){
+    let m = target.match(/^(.*?)\s+&quot;([\s\S]*?)&quot;$/);
+    if (m) return { url: m[1].trim(), title: m[2] };
+    m = target.match(/^(.*?)\s+&#39;([\s\S]*?)&#39;$/);
+    if (m) return { url: m[1].trim(), title: m[2] };
+    m = target.match(/^(.*?)\s+["']([^"']*)["']$/);
+    if (m) return { url: m[1].trim(), title: m[2] };
+    return { url: target.trim(), title: '' };
+  }
+
+  // ── Block-level parser ──────────────────────────────────────────────────
+  // Works on the ESCAPED source, split into lines.
+
+  function parseMarkdown(src){
+    // Normalize newlines and escape EVERYTHING up front (the security boundary).
+    const escaped = escapeHtml(src.replace(/\r\n?/g, '\n'));
+    const lines = escaped.split('\n');
+    return parseBlocks(lines).trim();
+  }
+
+  function parseBlocks(lines){
+    let out = '';
+    let i = 0;
+
+    const isBlank = l => /^\s*$/.test(l);
+
+    while (i < lines.length){
+      let line = lines[i];
+
+      // Blank line — skip.
+      if (isBlank(line)){ i++; continue; }
+
+      // Fenced code block: ``` or ~~~
+      const fence = line.match(/^(\s*)(`{3,}|~{3,})\s*([^`]*)$/);
+      if (fence){
+        const indent = fence[1].length;
+        const marker = fence[2][0];
+        const minLen = fence[2].length;
+        const langRaw = fence[3].trim();
+        const lang = langRaw ? langRaw.split(/\s+/)[0] : '';
+        const buf = [];
+        i++;
+        while (i < lines.length){
+          const cl = lines[i];
+          const close = cl.match(/^(\s*)(`{3,}|~{3,})\s*$/);
+          if (close && close[2][0] === marker && close[2].length >= minLen){ i++; break; }
+          // strip the opening indentation, up to `indent` leading spaces
+          buf.push(cl.replace(new RegExp('^\\s{0,' + indent + '}'), ''));
+          i++;
+        }
+        const cls = lang ? ' class="language-' + escapeHtml(lang) + '"' : '';
+        out += '<pre><code' + cls + '>' + buf.join('\n') + '</code></pre>\n';
+        continue;
+      }
+
+      // Indented code block (4+ spaces), only when not a list continuation.
+      if (/^( {4}|\t)/.test(line)){
+        const buf = [];
+        while (i < lines.length && (/^( {4}|\t)/.test(lines[i]) || isBlank(lines[i]))){
+          // stop if a blank is followed by a non-indented line
+          if (isBlank(lines[i])){
+            if (i + 1 < lines.length && !/^( {4}|\t)/.test(lines[i + 1])) break;
+            buf.push('');
+          } else {
+            buf.push(lines[i].replace(/^( {4}|\t)/, ''));
+          }
+          i++;
+        }
+        while (buf.length && buf[buf.length - 1] === '') buf.pop();
+        out += '<pre><code>' + buf.join('\n') + '</code></pre>\n';
+        continue;
+      }
+
+      // ATX heading
+      const h = line.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
+      if (h){
+        const level = h[1].length;
+        out += '<h' + level + '>' + renderInline(h[2]) + '</h' + level + '>\n';
+        i++;
+        continue;
+      }
+
+      // Horizontal rule
+      if (/^\s{0,3}([-*_])\s*(?:\1\s*){2,}$/.test(line)){
+        out += '<hr>\n';
+        i++;
+        continue;
+      }
+
+      // Table: header row + delimiter row
+      if (/\|/.test(line) && i + 1 < lines.length && isTableDelim(lines[i + 1])){
+        const tbl = [];
+        const header = line;
+        const delim = lines[i + 1];
+        i += 2;
+        while (i < lines.length && /\|/.test(lines[i]) && !isBlank(lines[i])){
+          tbl.push(lines[i]); i++;
+        }
+        out += renderTable(header, delim, tbl);
+        continue;
+      }
+
+      // Blockquote. NB: source was escaped up front, so '>' is now '&gt;'.
+      if (/^\s{0,3}&gt;/.test(line)){
+        const buf = [];
+        while (i < lines.length && /^\s{0,3}&gt;/.test(lines[i])){
+          buf.push(lines[i].replace(/^\s{0,3}&gt;\s?/, ''));
+          i++;
+        }
+        out += '<blockquote>\n' + parseBlocks(buf) + '</blockquote>\n';
+        continue;
+      }
+
+      // List (unordered or ordered)
+      if (matchListItem(line)){
+        const res = parseList(lines, i);
+        out += res.html;
+        i = res.next;
+        continue;
+      }
+
+      // Paragraph: gather until blank or a line that starts a new block.
+      const para = [];
+      while (i < lines.length && !isBlank(lines[i]) && !startsBlock(lines, i)){
+        para.push(lines[i]);
+        i++;
+      }
+      out += '<p>' + renderInline(para.join('\n')) + '</p>\n';
+    }
+
+    return out;
+  }
+
+  // Does the line at index i begin a new block (so a paragraph should stop)?
+  function startsBlock(lines, i){
+    const l = lines[i];
+    if (/^(\s*)(`{3,}|~{3,})/.test(l)) return true;
+    if (/^#{1,6}\s+/.test(l)) return true;
+    if (/^\s{0,3}&gt;/.test(l)) return true;
+    if (/^\s{0,3}([-*_])\s*(?:\1\s*){2,}$/.test(l)) return true;
+    if (matchListItem(l)) return true;
+    if (/\|/.test(l) && i + 1 < lines.length && isTableDelim(lines[i + 1])) return true;
+    return false;
+  }
+
+  function matchListItem(line){
+    return line.match(/^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/);
+  }
+
+  // Parse a (possibly nested) list starting at index `start`. Returns {html, next}.
+  function parseList(lines, start){
+    const first = matchListItem(lines[start]);
+    const baseIndent = first[1].length;
+    const ordered = /\d/.test(first[2]);
+    const startNum = ordered ? parseInt(first[2], 10) : null;
+
+    let i = start;
+    let html = '';
+    const isBlank = l => /^\s*$/.test(l);
+
+    while (i < lines.length){
+      const m = matchListItem(lines[i]);
+      if (!m){
+        // allow a single blank line between items (loose list); stop otherwise
+        if (isBlank(lines[i]) && i + 1 < lines.length && matchListItem(lines[i + 1])){
+          const nm = matchListItem(lines[i + 1]);
+          if (nm[1].length >= baseIndent){ i++; continue; }
+        }
+        break;
+      }
+      const indent = m[1].length;
+      if (indent < baseIndent) break;          // dedent: belongs to outer list
+      if (indent > baseIndent){                 // shouldn't reach here normally
+        break;
+      }
+      const thisOrdered = /\d/.test(m[2]);
+      if (thisOrdered !== ordered) break;       // marker type switched → new list
+
+      // Collect this item's content: the first line's text, plus any indented
+      // continuation/nested lines (indent > baseIndent or lazy paragraph lines).
+      const contentLines = [m[3]];
+      i++;
+      const childIndent = m[1].length + m[2].length + 1; // approximate marker width
+      while (i < lines.length){
+        const cur = lines[i];
+        if (isBlank(cur)){
+          // peek: is the next non-blank still part of this item?
+          if (i + 1 < lines.length && !isBlank(lines[i + 1])){
+            const nm = matchListItem(lines[i + 1]);
+            const nextIndent = (lines[i + 1].match(/^\s*/) || [''])[0].length;
+            if ((nm && nm[1].length > baseIndent) || (!nm && nextIndent >= childIndent)){
+              contentLines.push('');
+              i++; continue;
+            }
+            if (nm && nm[1].length === baseIndent){ break; }
+          }
+          break;
+        }
+        const indentHere = (cur.match(/^\s*/) || [''])[0].length;
+        const nm = matchListItem(cur);
+        if (nm && nm[1].length === baseIndent) break; // next sibling
+        if (indentHere > baseIndent || (nm && nm[1].length > baseIndent)){
+          // strip one level of indentation for nested parsing
+          contentLines.push(cur.replace(new RegExp('^\\s{0,' + (baseIndent + 2) + '}'), ''));
+          i++; continue;
+        }
+        // lazy continuation of a paragraph inside the item
+        if (!nm){ contentLines.push(cur.trim()); i++; continue; }
+        break;
+      }
+
+      html += '<li>' + renderListItem(contentLines) + '</li>\n';
+    }
+
+    const tag = ordered ? 'ol' : 'ul';
+    const startAttr = (ordered && startNum !== 1) ? ' start="' + startNum + '"' : '';
+    return { html: '<' + tag + startAttr + '>\n' + html + '</' + tag + '>\n', next: i };
+  }
+
+  // Render the inside of a single <li>. If it contains block structure
+  // (nested lists, multiple paragraphs, code), parse as blocks; else inline.
+  function renderListItem(contentLines){
+    const hasBlock = contentLines.some((l, idx) =>
+      matchListItem(l) && idx > 0) ||
+      contentLines.filter(l => /^\s*$/.test(l)).length > 0 ||
+      contentLines.some(l => /^(\s*)(`{3,}|~{3,})/.test(l));
+    if (hasBlock){
+      let inner = parseBlocks(contentLines).trim();
+      // Tighten the common "text then nested list" case: unwrap a single leading
+      // <p> when a sublist follows directly, so the item label sits tight.
+      inner = inner.replace(/^<p>([\s\S]*?)<\/p>\n(<ul|<ol)/, '$1\n$2');
+      return inner;
+    }
+    return renderInline(contentLines.join('\n').trim());
+  }
+
+  // ── Tables ──
+  function isTableDelim(line){
+    return /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/.test(line) && /-/.test(line);
+  }
+  function splitRow(row){
+    let r = row.trim();
+    if (r.startsWith('|')) r = r.slice(1);
+    if (r.endsWith('|')) r = r.slice(0, -1);
+    // split on unescaped pipes
+    const cells = [];
+    let cur = '';
+    for (let k = 0; k < r.length; k++){
+      if (r[k] === '\\' && r[k + 1] === '|'){ cur += '|'; k++; continue; }
+      if (r[k] === '|'){ cells.push(cur); cur = ''; continue; }
+      cur += r[k];
+    }
+    cells.push(cur);
+    return cells.map(c => c.trim());
+  }
+  function renderTable(header, delim, bodyRows){
+    const aligns = splitRow(delim).map(c => {
+      const l = c.startsWith(':'), r = c.endsWith(':');
+      if (l && r) return 'center';
+      if (r) return 'right';
+      if (l) return 'left';
+      return '';
+    });
+    const heads = splitRow(header);
+    const al = i => aligns[i] ? ' style="text-align:' + aligns[i] + '"' : '';
+    let html = '<table>\n<thead>\n<tr>';
+    heads.forEach((h, idx) => { html += '<th' + al(idx) + '>' + renderInline(h) + '</th>'; });
+    html += '</tr>\n</thead>\n<tbody>\n';
+    bodyRows.forEach(row => {
+      const cells = splitRow(row);
+      html += '<tr>';
+      for (let idx = 0; idx < heads.length; idx++){
+        html += '<td' + al(idx) + '>' + renderInline(cells[idx] != null ? cells[idx] : '') + '</td>';
+      }
+      html += '</tr>\n';
+    });
+    html += '</tbody>\n</table>\n';
+    return html;
+  }
+
+  // ── Wiring ──────────────────────────────────────────────────────────────
+  const editor = document.getElementById('editor');
+  const preview = document.getElementById('preview');
+
+  function render(){
+    try {
+      preview.innerHTML = parseMarkdown(editor.value);
+    } catch (e){
+      preview.innerHTML = '<p style="color:var(--danger)">Render error: ' + escapeHtml(e.message) + '</p>';
+    }
+  }
+
+  editor.addEventListener('input', render);
+
+  function currentHtml(){ return parseMarkdown(editor.value); }
+
+  function copyHtml(){
+    const html = currentHtml();
+    if (!html.trim()){ showToast('Nothing to copy'); return; }
+    navigator.clipboard.writeText(html).then(
+      () => showToast('Rendered HTML copied'),
+      () => showToast('Clipboard blocked by browser')
+    );
+  }
+
+  function downloadHtml(){
+    const body = currentHtml();
+    if (!body.trim()){ showToast('Nothing to download'); return; }
+    const doc =
+'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n' +
+'<meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+'<title>Markdown export</title>\n<style>\n' +
+'  body{max-width:760px;margin:48px auto;padding:0 20px;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;background:#fff;}\n' +
+'  h1,h2{border-bottom:1px solid #eaecef;padding-bottom:.3em;}\n' +
+'  code{background:#f4f4f4;border:1px solid #e2e2e2;border-radius:3px;padding:1px 5px;font-size:.9em;}\n' +
+'  pre{background:#f6f8fa;border:1px solid #e2e2e2;border-radius:6px;padding:14px 16px;overflow:auto;}\n' +
+'  pre code{background:none;border:none;padding:0;}\n' +
+'  blockquote{margin:1em 0;padding:.2em 1em;border-left:4px solid #dfe2e5;color:#555;}\n' +
+'  table{border-collapse:collapse;}th,td{border:1px solid #ddd;padding:6px 12px;}th{background:#f4f4f4;}\n' +
+'  img{max-width:100%;}a{color:#0366d6;}\n' +
+'</style>\n</head>\n<body>\n' + body + '\n</body>\n</html>\n';
+    download(doc, 'markdown-export.html', 'text/html');
+    showToast('Downloaded markdown-export.html');
+  }
+
+  function clearAll(){
+    editor.value = '';
+    render();
+    editor.focus();
+  }
+
+  const SAMPLE = [
+    '# Markdown Preview',
+    '',
+    'A **local-first** scratchpad. Type on the left, see it _rendered_ on the',
+    'right. Nothing is ***ever*** uploaded. ~~No accounts.~~ No tracking.',
+    '',
+    '## Text formatting',
+    '',
+    'Inline `code`, **bold**, _italic_, **_bold italic_**, and a [link to',
+    'Toolshed](../../index.html "back home"). Bare URLs autolink too:',
+    'https://example.com/path?q=1',
+    '',
+    'Two spaces at the end of a line  ',
+    'make a hard break.',
+    '',
+    '## Lists',
+    '',
+    '- Unordered item',
+    '- Item with `inline code`',
+    '  - Nested item',
+    '  - Another nested item',
+    '    - Even deeper',
+    '- Back to top level',
+    '',
+    '1. First ordered',
+    '2. Second ordered',
+    '3. Third',
+    '',
+    '## Blockquote',
+    '',
+    '> A quote of some weight.',
+    '> > And a nested one underneath it.',
+    '',
+    '## Code block',
+    '',
+    '```js',
+    'function greet(name) {',
+    '  // < and > stay literal, never parsed',
+    '  return `Hello, ${name}!`;',
+    '}',
+    '```',
+    '',
+    '## Table',
+    '',
+    '| Feature      | Supported | Notes            |',
+    '| ------------ |:---------:| ---------------- |',
+    '| Headings     | yes       | `#`..`######`    |',
+    '| Tables       | yes       | GitHub-style     |',
+    '| Raw HTML     | escaped   | <b>shown as text |',
+    '',
+    '## Safety',
+    '',
+    'Raw HTML is escaped, so this is harmless text, not a tag:',
+    '',
+    '    <script>alert("xss")</scr' + 'ipt>',
+    '',
+    'And [unsafe links](javascript:alert(1)) are stripped.',
+    '',
+    '---',
+    '',
+    '![A 1px placeholder](data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA= "tiny image")',
+    ''
+  ].join('\n');
+
+  function loadSample(){
+    editor.value = SAMPLE;
+    render();
+    showToast('Sample loaded');
+  }
+
+  // Start with the sample so the preview isn't empty.
+  editor.value = SAMPLE;
+  render();
+</script>
+</body>
+</html>

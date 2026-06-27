@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSV ⇄ JSON</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 980px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 980px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── tool-specific ── */
+
+  .controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; }
+  .control { display: flex; flex-direction: column; gap: 0; }
+  .control select { min-width: 150px; }
+
+  /* segmented direction toggle */
+  .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .segmented button {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-radius: 0;
+    padding: 11px 18px;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .segmented button + button { border-left: 1px solid var(--border); }
+  .segmented button.active { background: var(--accent); color: var(--bg); }
+  .segmented button:not(.active):hover { color: var(--text); }
+
+  .toggles { display: flex; flex-wrap: wrap; gap: 18px; }
+  .toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text); cursor: pointer; user-select: none; }
+  .toggle input { width: auto; accent-color: var(--accent); cursor: pointer; }
+  .toggle.disabled { opacity: .35; pointer-events: none; }
+
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .panes { grid-template-columns: 1fr; } }
+
+  .pane-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pane-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .pane-stat { font-size: 11px; color: var(--accent2); }
+
+  #input { min-height: 320px; }
+  #output {
+    width: 100%;
+    min-height: 320px;
+    max-height: 520px;
+    overflow: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+    line-height: 1.5;
+    white-space: pre;
+    margin: 0;
+  }
+  #output.error-state { color: var(--danger); white-space: pre-wrap; }
+
+  .out-toolbar { display: flex; gap: 10px; }
+  .swap-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+  .file-info {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(71,255,232,0.05);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .file-info.visible { display: flex; }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>CSV<span>&hArr;JSON</span></h1>
+  <p class="subtitle">Convert tabular data between CSV and JSON both ways — paste or drop a file, convert locally, nothing uploaded.</p>
+</header>
+
+<div class="main">
+
+  <!-- Options -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="step">1</span>Options</span>
+      <span>direction &amp; format</span>
+    </div>
+    <div class="card-body">
+      <div class="controls">
+        <div class="control">
+          <label class="field">Direction</label>
+          <div class="segmented" id="dirToggle">
+            <button data-dir="csv2json" class="active" onclick="setDir('csv2json')">CSV &rarr; JSON</button>
+            <button data-dir="json2csv" onclick="setDir('json2csv')">JSON &rarr; CSV</button>
+          </div>
+        </div>
+        <div class="control">
+          <label class="field" for="delimiter">CSV delimiter</label>
+          <select id="delimiter" onchange="convert()">
+            <option value=",">Comma  ,</option>
+            <option value="\t">Tab  \t</option>
+            <option value=";">Semicolon  ;</option>
+            <option value="|">Pipe  |</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="toggles" style="margin-top:20px">
+        <label class="toggle" id="tgHeaderWrap">
+          <input type="checkbox" id="tgHeader" checked onchange="convert()">
+          First row is header
+        </label>
+        <label class="toggle" id="tgCoerceWrap">
+          <input type="checkbox" id="tgCoerce" onchange="convert()">
+          Parse numbers / booleans
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input source -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="step">2</span>Input</span>
+      <span>paste or drop a file</span>
+    </div>
+    <div class="card-body">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".csv,.json,.txt,.tsv">
+        <div class="drop-icon">&#8593;</div>
+        <div class="drop-text"><strong>Click or drag</strong> a .csv, .json, .tsv or .txt file here<br><span style="font-size:11px;opacity:.6">direction auto-detects from the extension — you can override above</span></div>
+      </div>
+
+      <div class="file-info" id="fileInfo">
+        <span>&#128196;</span>
+        <span id="fileName"></span>
+        <span style="color:var(--muted);margin-left:auto" id="fileSize"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Convert -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="step">3</span>Convert</span>
+      <span id="statLine">&mdash;</span>
+    </div>
+    <div class="card-body">
+
+      <div class="swap-row" style="margin-bottom:16px">
+        <button class="btn-primary" onclick="convert(true)">&#9889; Convert</button>
+        <button class="btn-secondary" onclick="loadSample()">Load sample</button>
+        <button class="btn-secondary" onclick="swapInputOutput()">Use output as input</button>
+        <button class="btn-secondary" onclick="clearAll()">Clear</button>
+      </div>
+
+      <div class="panes">
+        <div>
+          <div class="pane-head">
+            <span class="pane-title" id="inputTitle">Input &middot; CSV</span>
+            <span class="pane-stat" id="inputStat"></span>
+          </div>
+          <textarea id="input" placeholder="Paste CSV or JSON here, or drop a file above…" oninput="onInput()" spellcheck="false"></textarea>
+        </div>
+        <div>
+          <div class="pane-head">
+            <span class="pane-title" id="outputTitle">Output &middot; JSON</span>
+            <div class="out-toolbar">
+              <button class="tool-btn" onclick="copyOutput()">Copy</button>
+              <button class="tool-btn" onclick="downloadOutput()">Download</button>
+            </div>
+          </div>
+          <pre id="output" aria-live="polite"></pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  let direction = 'csv2json';      // 'csv2json' | 'json2csv'
+  let lastOutput = '';             // current valid output string ('' if error/empty)
+  let lastOutputKind = null;       // 'json' | 'csv'
+
+  const $ = id => document.getElementById(id);
+
+  function getDelimiter() {
+    // <option value="\t"> stores a literal backslash-t; turn that into a real tab.
+    const raw = $('delimiter').value;
+    return raw === '\\t' ? '\t' : raw;
+  }
+
+  /* ─────────────────────────  CSV parsing (RFC-4180-ish)  ─────────────────────────
+     Handles quoted fields, "" escaped quotes inside quotes, and delimiters / CR / LF
+     inside quoted fields. Accepts CRLF, CR, or LF line endings. Returns string[][]. */
+  function parseCsv(text, delim) {
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+    let i = 0;
+    const n = text.length;
+    let started = false; // have we seen any char on the current (possibly empty) row?
+
+    const pushField = () => { row.push(field); field = ''; started = true; };
+    const pushRow = () => { rows.push(row); row = []; started = false; };
+
+    while (i < n) {
+      const c = text[i];
+
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i += 2; continue; } // escaped quote
+          inQuotes = false; i++; continue;                              // closing quote
+        }
+        field += c; i++; continue;
+      }
+
+      if (c === '"') { inQuotes = true; started = true; i++; continue; }
+      if (c === delim) { pushField(); i++; continue; }
+
+      if (c === '\r') {
+        // CR or CRLF terminates the row
+        pushField(); pushRow();
+        if (text[i + 1] === '\n') i += 2; else i++;
+        continue;
+      }
+      if (c === '\n') { pushField(); pushRow(); i++; continue; }
+
+      field += c; started = true; i++;
+    }
+
+    // flush trailing field/row (unless input ended exactly on a newline with nothing pending)
+    if (inQuotes) throw new Error('Unterminated quoted field in CSV.');
+    if (started || field !== '' || row.length) { pushField(); pushRow(); }
+
+    // Drop a single trailing fully-empty row (artifact of a final newline).
+    if (rows.length && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') {
+      rows.pop();
+    }
+    return rows;
+  }
+
+  function coerce(v) {
+    if (v === '') return '';
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+    if (v === 'null') return null;
+    // strict-ish number test: avoid mangling things like "007", "1,000", phone numbers w/ +.
+    if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(v)) {
+      const num = Number(v);
+      if (Number.isFinite(num)) return num;
+    }
+    return v;
+  }
+
+  function csvToJson(text) {
+    const delim = getDelimiter();
+    const rows = parseCsv(text, delim);
+    if (!rows.length) throw new Error('No data found.');
+
+    const hasHeader = $('tgHeader').checked;
+    const doCoerce = $('tgCoerce').checked;
+    const cv = v => doCoerce ? coerce(v) : v;
+
+    let result, colCount;
+
+    if (hasHeader) {
+      const headers = rows[0];
+      colCount = headers.length;
+      result = rows.slice(1).map(r => {
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = cv(r[idx] !== undefined ? r[idx] : ''); });
+        return obj;
+      });
+    } else {
+      colCount = rows.reduce((m, r) => Math.max(m, r.length), 0);
+      result = rows.map(r => r.map(cv));
+    }
+
+    const json = JSON.stringify(result, null, 2);
+    return { text: json, rows: result.length, cols: colCount, kind: 'json' };
+  }
+
+  /* ─────────────────────────  JSON → CSV  ───────────────────────── */
+  function csvEscape(value, delim) {
+    let s;
+    if (value === null || value === undefined) s = '';
+    else if (typeof value === 'object') s = JSON.stringify(value); // nested obj/array
+    else s = String(value);
+    if (s.includes('"') || s.includes(delim) || s.includes('\n') || s.includes('\r')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  function jsonToCsv(text) {
+    const delim = getDelimiter();
+    let data;
+    try { data = JSON.parse(text); }
+    catch (e) { throw new Error('Invalid JSON: ' + e.message); }
+
+    if (!Array.isArray(data)) {
+      // tolerate a single object → one-row table
+      if (data && typeof data === 'object') data = [data];
+      else throw new Error('Expected a JSON array (of objects or arrays).');
+    }
+    if (!data.length) throw new Error('JSON array is empty.');
+
+    const allArrays = data.every(r => Array.isArray(r));
+    let lines, cols;
+
+    if (allArrays) {
+      cols = data.reduce((m, r) => Math.max(m, r.length), 0);
+      lines = data.map(r => {
+        const cells = [];
+        for (let c = 0; c < cols; c++) cells.push(csvEscape(r[c], delim));
+        return cells.join(delim);
+      });
+    } else {
+      // array of objects (mixed primitives tolerated as a single "value" column? no — require objects)
+      const headers = [];
+      const seen = new Set();
+      for (const item of data) {
+        if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+          throw new Error('Mixed JSON: expected every element to be an object (or every element an array).');
+        }
+        for (const k of Object.keys(item)) {
+          if (!seen.has(k)) { seen.add(k); headers.push(k); }
+        }
+      }
+      cols = headers.length;
+      lines = [headers.map(h => csvEscape(h, delim)).join(delim)];
+      for (const item of data) {
+        lines.push(headers.map(h => csvEscape(item[h], delim)).join(delim));
+      }
+    }
+
+    const csv = lines.join('\r\n');
+    return { text: csv, rows: data.length, cols, kind: 'csv' };
+  }
+
+  /* ─────────────────────────  UI wiring  ───────────────────────── */
+  function setDir(dir, opts) {
+    direction = dir;
+    document.querySelectorAll('#dirToggle button').forEach(b =>
+      b.classList.toggle('active', b.dataset.dir === dir));
+    const csv2json = dir === 'csv2json';
+    $('inputTitle').textContent = 'Input · ' + (csv2json ? 'CSV' : 'JSON');
+    $('outputTitle').textContent = 'Output · ' + (csv2json ? 'JSON' : 'CSV');
+    $('input').placeholder = csv2json
+      ? 'Paste CSV here, or drop a file above…'
+      : 'Paste a JSON array of objects (or arrays) here, or drop a file…';
+    // header / coerce toggles only apply to CSV → JSON
+    $('tgHeaderWrap').classList.toggle('disabled', !csv2json);
+    $('tgCoerceWrap').classList.toggle('disabled', !csv2json);
+    if (!(opts && opts.silent)) convert();
+  }
+
+  let liveTimer;
+  function onInput() {
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => convert(), 150); // debounced live conversion
+  }
+
+  function convert(loud) {
+    const input = $('input').value;
+    const out = $('output');
+    out.classList.remove('error-state');
+
+    // input stat (line count, rough)
+    const inLines = input ? input.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n').length : 0;
+    $('inputStat').textContent = input ? inLines + ' line' + (inLines === 1 ? '' : 's') : '';
+
+    if (!input.trim()) {
+      out.textContent = '';
+      lastOutput = ''; lastOutputKind = null;
+      $('statLine').innerHTML = '&mdash;';
+      if (loud) showToast('Nothing to convert');
+      return;
+    }
+
+    try {
+      const res = direction === 'csv2json' ? csvToJson(input) : jsonToCsv(input);
+      out.textContent = res.text;
+      lastOutput = res.text;
+      lastOutputKind = res.kind;
+      $('statLine').textContent = res.rows + ' row' + (res.rows === 1 ? '' : 's') + ' × ' + res.cols + ' col' + (res.cols === 1 ? '' : 's');
+      if (loud) showToast('Converted · ' + res.rows + ' rows');
+    } catch (e) {
+      out.classList.add('error-state');
+      out.textContent = '⚠ ' + e.message;
+      lastOutput = ''; lastOutputKind = null;
+      $('statLine').innerHTML = '<span style="color:var(--danger)">error</span>';
+      if (loud) showToast(e.message);
+    }
+  }
+
+  function copyOutput() {
+    if (!lastOutput) { showToast('Nothing to copy'); return; }
+    navigator.clipboard.writeText(lastOutput)
+      .then(() => showToast('Copied'))
+      .catch(() => showToast('Copy failed'));
+  }
+
+  function downloadOutput() {
+    if (!lastOutput) { showToast('Nothing to download'); return; }
+    if (lastOutputKind === 'json') {
+      download(lastOutput, 'data.json', 'application/json');
+      showToast('Downloaded data.json');
+    } else {
+      download(lastOutput, 'data.csv', 'text/csv');
+      showToast('Downloaded data.csv');
+    }
+  }
+
+  function swapInputOutput() {
+    if (!lastOutput) { showToast('No output to reuse'); return; }
+    const nextDir = lastOutputKind === 'json' ? 'json2csv' : 'csv2json';
+    $('input').value = lastOutput;
+    setDir(nextDir); // also re-converts
+    showToast('Output moved to input');
+  }
+
+  function clearAll() {
+    $('input').value = '';
+    $('output').textContent = '';
+    $('output').classList.remove('error-state');
+    $('fileInfo').classList.remove('visible');
+    $('fileInput').value = '';
+    lastOutput = ''; lastOutputKind = null;
+    $('inputStat').textContent = '';
+    $('statLine').innerHTML = '&mdash;';
+  }
+
+  /* ── file drop / select ── */
+  const fileInput = $('fileInput');
+  const dropZone = $('dropZone');
+
+  fileInput.addEventListener('change', e => { const f = e.target.files[0]; if (f) readFile(f); });
+
+  ['dragenter', 'dragover'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
+  dropZone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+
+  function readFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result || '';
+      $('input').value = text;
+      $('fileName').textContent = file.name;
+      $('fileSize').textContent = formatBytes(file.size);
+      $('fileInfo').classList.add('visible');
+
+      // detect direction from extension
+      const name = file.name.toLowerCase();
+      if (name.endsWith('.json')) setDir('json2csv', { silent: true });
+      else if (name.endsWith('.csv') || name.endsWith('.tsv')) setDir('csv2json', { silent: true });
+      // .tsv → default to tab delimiter as a convenience
+      if (name.endsWith('.tsv')) $('delimiter').value = '\\t';
+
+      convert();
+      showToast('Loaded ' + file.name);
+    };
+    reader.onerror = () => showToast('Could not read that file');
+    reader.readAsText(file);
+  }
+
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(1) + ' MB';
+  }
+
+  function loadSample() {
+    if (direction === 'csv2json') {
+      $('input').value = 'name,role,age,active,note\n' +
+        'Ada Lovelace,Engineer,36,true,"Author of the first algorithm"\n' +
+        '"Hopper, Grace",Admiral,85,true,"Coined ""debugging"", line one\nand line two"\n' +
+        'Alan Turing,Researcher,41,false,';
+    } else {
+      $('input').value = JSON.stringify([
+        { name: 'Ada Lovelace', role: 'Engineer', tags: ['math', 'poetry'] },
+        { name: 'Grace Hopper', role: 'Admiral', note: 'said "debug", with, commas' },
+        { name: 'Alan Turing', role: 'Researcher', age: 41 }
+      ], null, 2);
+    }
+    convert();
+    showToast('Sample loaded');
+  }
+
+  // init
+  setDir('csv2json', { silent: true });
+</script>
+</body>
+</html>

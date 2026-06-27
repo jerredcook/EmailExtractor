@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checksum</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── tool-specific ── */
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+    padding: 9px 16px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .tab.active { background: var(--surface2); color: var(--accent); border-color: var(--accent); }
+
+  .mode { display: none; }
+  .mode.active { display: block; }
+
+  .file-info {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(71,255,232,0.05);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .file-info.visible { display: flex; }
+  .file-info .fi-size { color: var(--muted); margin-left: auto; }
+
+  .hash-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hash-row:last-child { border-bottom: none; }
+  .hash-algo {
+    flex: 0 0 84px;
+    font-weight: 700;
+    color: var(--accent2);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+  }
+  .hash-val {
+    flex: 1;
+    min-width: 0;
+    word-break: break-all;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text);
+    user-select: all;
+  }
+  .hash-val.match { color: var(--ok); }
+  .hash-val.pending { color: var(--muted); }
+  .hash-row .copy-one { background: transparent; border: none; color: var(--muted); font-size: 11px; padding: 4px 8px; flex: 0 0 auto; }
+  .hash-row .copy-one:hover { color: var(--accent); }
+
+  .results-section { display: none; }
+  .results-section.visible { display: block; }
+
+  .verify-result {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    display: none;
+  }
+  .verify-result.visible { display: block; }
+  .verify-result.ok { background: rgba(71,255,142,0.08); border: 1px solid var(--ok); color: var(--ok); }
+  .verify-result.bad { background: rgba(255,71,71,0.08); border: 1px solid var(--danger); color: var(--danger); }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>Check<span>sum</span></h1>
+  <p class="subtitle">Compute and verify file or text hashes (MD5, SHA-1, SHA-256, SHA-384, SHA-512) locally &mdash; drop a file to fingerprint it, nothing is uploaded.</p>
+</header>
+
+<div class="main">
+
+  <!-- Input -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="step">1</span>Input</span>
+      <span>file or text</span>
+    </div>
+    <div class="card-body">
+      <div class="tabs">
+        <button class="tab active" id="tabFile" onclick="setMode('file')">File</button>
+        <button class="tab" id="tabText" onclick="setMode('text')">Text</button>
+      </div>
+
+      <div class="mode active" id="modeFile">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput">
+          <div class="drop-icon">&#8593;</div>
+          <div class="drop-text"><strong>Click or drag</strong> any file here<br><span style="font-size:11px;opacity:.6">hashed in-memory, never uploaded</span></div>
+        </div>
+        <div class="file-info" id="fileInfo">
+          <span>&#128196;</span>
+          <span id="fileName"></span>
+          <span class="fi-size" id="fileSize"></span>
+        </div>
+      </div>
+
+      <div class="mode" id="modeText">
+        <label class="field" for="textInput">Text (hashed as UTF-8 bytes)</label>
+        <textarea id="textInput" placeholder="Type or paste text to hash..." oninput="onTextInput()"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="card results-section" id="resultsSection">
+    <div class="card-header">
+      <span><span class="step">2</span>Digests</span>
+      <span id="digestStatus">hex</span>
+    </div>
+    <div id="hashRows"></div>
+  </div>
+
+  <!-- Verify -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="step">3</span>Verify</span>
+      <span>paste an expected hash</span>
+    </div>
+    <div class="card-body">
+      <label class="field" for="expectedInput">Expected hash</label>
+      <input type="text" id="expectedInput" placeholder="paste a hash to compare against all algorithms..." oninput="runVerify()" spellcheck="false">
+      <div class="verify-result" id="verifyResult"></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  const ALGOS = ['MD5', 'SHA-1', 'SHA-256', 'SHA-384', 'SHA-512'];
+  let currentHashes = {};   // { 'MD5': 'hex', ... } when computed
+  let mode = 'file';
+
+  /* ---- ArrayBuffer/bytes → lowercase hex ---- */
+  const HEX = [];
+  for (let i = 0; i < 256; i++) HEX[i] = (i < 16 ? '0' : '') + i.toString(16);
+  function bufToHex(buf) {
+    const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    let out = '';
+    for (let i = 0; i < u8.length; i++) out += HEX[u8[i]];
+    return out;
+  }
+
+  /* ---- Self-contained MD5 over a Uint8Array (binary-safe) ---- */
+  function md5Hex(bytes) {
+    bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    const msgLenBits = bytes.length * 8;
+
+    // Padding: append 0x80, then zeros, until length ≡ 56 (mod 64),
+    // then 8-byte little-endian original length in bits.
+    const withPad = ((bytes.length + 8) >> 6) + 1;       // number of 64-byte blocks
+    const totalBytes = withPad * 64;
+    const m = new Uint8Array(totalBytes);
+    m.set(bytes);
+    m[bytes.length] = 0x80;
+    // low 32 bits of bit-length (handles files > 512 MB up to 2^53 via float math)
+    const lenLo = msgLenBits >>> 0;
+    const lenHi = Math.floor(msgLenBits / 4294967296) >>> 0;
+    m[totalBytes - 8] = lenLo & 0xff;
+    m[totalBytes - 7] = (lenLo >>> 8) & 0xff;
+    m[totalBytes - 6] = (lenLo >>> 16) & 0xff;
+    m[totalBytes - 5] = (lenLo >>> 24) & 0xff;
+    m[totalBytes - 4] = lenHi & 0xff;
+    m[totalBytes - 3] = (lenHi >>> 8) & 0xff;
+    m[totalBytes - 2] = (lenHi >>> 16) & 0xff;
+    m[totalBytes - 1] = (lenHi >>> 24) & 0xff;
+
+    // Per-round shift amounts
+    const S = [
+      7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+      5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+      4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+      6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
+    ];
+    // Precomputed K[i] = floor(abs(sin(i+1)) * 2^32)
+    const K = [
+      0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+      0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+      0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+      0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+      0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+      0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+      0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+      0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
+    ];
+
+    let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+    const M = new Int32Array(16);
+
+    function rol(x, c) { return (x << c) | (x >>> (32 - c)); }
+
+    for (let off = 0; off < totalBytes; off += 64) {
+      for (let j = 0; j < 16; j++) {
+        const p = off + j * 4;
+        M[j] = m[p] | (m[p + 1] << 8) | (m[p + 2] << 16) | (m[p + 3] << 24);
+      }
+
+      let A = a0, B = b0, C = c0, D = d0;
+
+      for (let i = 0; i < 64; i++) {
+        let F, g;
+        if (i < 16)      { F = (B & C) | (~B & D);           g = i; }
+        else if (i < 32) { F = (D & B) | (~D & C);           g = (5 * i + 1) & 15; }
+        else if (i < 48) { F = B ^ C ^ D;                    g = (3 * i + 5) & 15; }
+        else             { F = C ^ (B | ~D);                 g = (7 * i) & 15; }
+
+        // sum mod 2^32 using >>> 0 normalisation
+        const tmp = D;
+        D = C;
+        C = B;
+        const sum = (((A + F) >>> 0) + ((K[i] + M[g]) >>> 0)) >>> 0;
+        B = (B + rol(sum, S[i])) >>> 0;
+        A = tmp;
+      }
+
+      a0 = (a0 + A) >>> 0;
+      b0 = (b0 + B) >>> 0;
+      c0 = (c0 + C) >>> 0;
+      d0 = (d0 + D) >>> 0;
+    }
+
+    // Output is little-endian per 32-bit word
+    function leHex(x) {
+      let s = '';
+      for (let i = 0; i < 4; i++) s += HEX[(x >>> (i * 8)) & 0xff];
+      return s;
+    }
+    return leHex(a0) + leHex(b0) + leHex(c0) + leHex(d0);
+  }
+
+  /* ---- Compute every digest for a Uint8Array ---- */
+  async function computeAll(bytes) {
+    const out = { MD5: md5Hex(bytes) };
+    // crypto.subtle wants an ArrayBuffer view; pass the exact byte range.
+    const view = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const subtle = (window.crypto && window.crypto.subtle) || null;
+    if (subtle) {
+      const [s1, s256, s384, s512] = await Promise.all([
+        subtle.digest('SHA-1', view),
+        subtle.digest('SHA-256', view),
+        subtle.digest('SHA-384', view),
+        subtle.digest('SHA-512', view)
+      ]);
+      out['SHA-1'] = bufToHex(s1);
+      out['SHA-256'] = bufToHex(s256);
+      out['SHA-384'] = bufToHex(s384);
+      out['SHA-512'] = bufToHex(s512);
+    } else {
+      for (const a of ['SHA-1', 'SHA-256', 'SHA-384', 'SHA-512']) out[a] = null;
+    }
+    return out;
+  }
+
+  /* ---- Input handling ---- */
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+
+  fileInput.addEventListener('change', e => { const f = e.target.files[0]; if (f) hashFile(f); });
+
+  ['dragenter', 'dragover'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
+  dropZone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) hashFile(f); });
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('tabFile').classList.toggle('active', m === 'file');
+    document.getElementById('tabText').classList.toggle('active', m === 'text');
+    document.getElementById('modeFile').classList.toggle('active', m === 'file');
+    document.getElementById('modeText').classList.toggle('active', m === 'text');
+    // Recompute for the active mode's current content.
+    if (m === 'text') onTextInput();
+    else if (currentFileBytes) renderAndHash(currentFileBytes);
+    else hide();
+  }
+
+  let currentFileBytes = null;
+
+  function hashFile(file) {
+    const reader = new FileReader();
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatBytes(file.size);
+    document.getElementById('fileInfo').classList.add('visible');
+    reader.onload = () => {
+      currentFileBytes = new Uint8Array(reader.result);
+      renderAndHash(currentFileBytes);
+    };
+    reader.onerror = () => showToast('Could not read that file');
+    reader.readAsArrayBuffer(file);
+  }
+
+  let textDebounce;
+  function onTextInput() {
+    clearTimeout(textDebounce);
+    textDebounce = setTimeout(() => {
+      const v = document.getElementById('textInput').value;
+      if (v === '') { hide(); return; }
+      renderAndHash(new TextEncoder().encode(v));
+    }, 120);
+  }
+
+  function hide() {
+    currentHashes = {};
+    document.getElementById('resultsSection').classList.remove('visible');
+    runVerify();
+  }
+
+  async function renderAndHash(bytes) {
+    const section = document.getElementById('resultsSection');
+    const rows = document.getElementById('hashRows');
+    section.classList.add('visible');
+    document.getElementById('digestStatus').textContent = 'hashing…';
+    rows.innerHTML = ALGOS.map(a =>
+      '<div class="hash-row"><div class="hash-algo">' + a +
+      '</div><div class="hash-val pending" data-algo="' + a + '">computing…</div>' +
+      '<button class="copy-one" data-algo="' + a + '" disabled>copy</button></div>'
+    ).join('');
+
+    let result;
+    try {
+      result = await computeAll(bytes);
+    } catch (err) {
+      document.getElementById('digestStatus').textContent = 'error';
+      showToast('Hashing failed: ' + (err && err.message ? err.message : err));
+      return;
+    }
+    currentHashes = result;
+    document.getElementById('digestStatus').textContent = 'hex';
+
+    for (const a of ALGOS) {
+      const cell = rows.querySelector('.hash-val[data-algo="' + a + '"]');
+      const btn = rows.querySelector('.copy-one[data-algo="' + a + '"]');
+      const val = result[a];
+      if (val == null) {
+        cell.textContent = 'unavailable (crypto.subtle requires a secure context)';
+        cell.classList.add('pending');
+        continue;
+      }
+      cell.textContent = val;
+      cell.classList.remove('pending');
+      btn.disabled = false;
+      btn.onclick = () => copyHash(a);
+    }
+    runVerify();
+  }
+
+  function copyHash(algo) {
+    const v = currentHashes[algo];
+    if (!v) { showToast('Nothing to copy'); return; }
+    navigator.clipboard.writeText(v).then(
+      () => showToast('Copied ' + algo),
+      () => showToast('Copy failed')
+    );
+  }
+
+  function runVerify() {
+    const box = document.getElementById('verifyResult');
+    const raw = document.getElementById('expectedInput').value.trim().toLowerCase();
+    // Clear any prior match highlighting.
+    document.querySelectorAll('.hash-val.match').forEach(el => el.classList.remove('match'));
+
+    if (!raw) { box.className = 'verify-result'; box.textContent = ''; return; }
+    const computed = Object.keys(currentHashes).filter(a => currentHashes[a] != null);
+    if (!computed.length) {
+      box.className = 'verify-result bad visible';
+      box.textContent = '✗ no input to compare against — add a file or text first';
+      return;
+    }
+
+    let matched = null;
+    for (const a of ALGOS) {
+      if (currentHashes[a] && currentHashes[a].toLowerCase() === raw) { matched = a; break; }
+    }
+    if (matched) {
+      box.className = 'verify-result ok visible';
+      box.textContent = '✓ MATCH (' + matched + ')';
+      const cell = document.querySelector('.hash-val[data-algo="' + matched + '"]');
+      if (cell) cell.classList.add('match');
+    } else {
+      box.className = 'verify-result bad visible';
+      box.textContent = '✗ no match';
+    }
+  }
+
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+    return (b / 1073741824).toFixed(2) + ' GB';
+  }
+</script>
+</body>
+</html>

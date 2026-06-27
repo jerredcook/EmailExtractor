@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Scrubber</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── tool-specific ── */
+  .note {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+    background: rgba(71,255,232,0.04);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent2);
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin-top: 16px;
+  }
+  .note strong { color: var(--accent2); }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .quality-row { display: flex; align-items: center; gap: 12px; }
+  .quality-row input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+  .quality-val { font-size: 13px; color: var(--accent); min-width: 36px; text-align: right; }
+  .opt-disabled { opacity: .4; pointer-events: none; }
+
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .results-section { display: none; }
+  .results-section.visible { display: block; }
+
+  .results-toolbar { display: flex; gap: 10px; padding: 16px 20px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .results-toolbar .summary { font-size: 12px; color: var(--muted); }
+  .results-toolbar .summary b { color: var(--ok); }
+
+  .result-list { list-style: none; }
+  .result-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .result-item:hover { background: rgba(255,255,255,0.02); }
+  .thumb {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    object-fit: cover;
+    image-rendering: auto;
+  }
+  .result-meta { flex: 1; min-width: 0; font-size: 12px; line-height: 1.55; }
+  .result-meta .fname { color: var(--text); font-size: 13px; font-weight: 700; word-break: break-all; }
+  .result-meta .sizes { color: var(--muted); margin-top: 3px; }
+  .result-meta .sizes .arrow { color: var(--accent2); }
+  .result-meta .reduction { color: var(--accent); }
+  .result-meta .reduction.grew { color: var(--danger); }
+  .result-meta .dims { color: var(--muted); margin-top: 2px; }
+  .result-meta .removed { color: var(--ok); margin-top: 4px; font-size: 11px; }
+  .result-meta .err { color: var(--danger); margin-top: 3px; }
+  .result-actions { flex-shrink: 0; }
+  .spinner { color: var(--muted); font-size: 12px; }
+
+  .empty { padding: 28px 20px; text-align: center; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>Image<span>Scrubber</span></h1>
+  <p class="subtitle">Strip hidden metadata (EXIF, GPS location, camera info) from photos and optionally resize/compress &mdash; entirely in your browser, nothing uploaded.</p>
+</header>
+
+<div class="main">
+
+  <!-- Input -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="step">1</span>Drop images</span>
+      <span>JPEG / PNG / WebP</span>
+    </div>
+    <div class="card-body">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*" multiple>
+        <div class="drop-icon">&#8593;</div>
+        <div class="drop-text"><strong>Click or drag</strong> one or more images here<br><span style="font-size:11px;opacity:.6">(.jpg, .png, .webp, &hellip; accepts any image)</span></div>
+      </div>
+      <div class="note">
+        <strong>How it works:</strong> each image is decoded to raw pixels, painted onto a <code>&lt;canvas&gt;</code>, then re-encoded.
+        Because the output is built from pixels alone, <strong>every embedded marker is dropped</strong> &mdash;
+        EXIF, GPS coordinates, camera make/model, timestamps, thumbnails and color profiles do not survive the re-encode.
+      </div>
+    </div>
+  </div>
+
+  <!-- Options -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="step">2</span>Options</span>
+      <span>applied to all</span>
+    </div>
+    <div class="card-body">
+      <div class="options-grid">
+        <div>
+          <label class="field" for="maxDim">Max dimension</label>
+          <select id="maxDim">
+            <option value="0">Keep original</option>
+            <option value="4000">4000 px</option>
+            <option value="2000">2000 px</option>
+            <option value="1000">1000 px</option>
+          </select>
+        </div>
+        <div>
+          <label class="field" for="format">Output format</label>
+          <select id="format">
+            <option value="">Keep original</option>
+            <option value="image/jpeg">JPEG</option>
+            <option value="image/png">PNG</option>
+            <option value="image/webp">WebP</option>
+          </select>
+        </div>
+        <div id="qualityWrap">
+          <label class="field" for="quality">Quality <span style="opacity:.6">(JPEG / WebP)</span></label>
+          <div class="quality-row">
+            <input type="range" id="quality" min="0.1" max="1.0" step="0.05" value="0.85">
+            <span class="quality-val" id="qualityVal">0.85</span>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6">
+        Resizing only scales <em>down</em> &mdash; images smaller than the limit are never upscaled. Aspect ratio is preserved.
+      </p>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn-primary" id="processBtn" onclick="processAll()">&#9889; Scrub images</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+
+  <!-- Results -->
+  <div class="card results-section" id="resultsSection">
+    <div class="card-header">
+      <span><span class="step">3</span>Results</span>
+    </div>
+    <div class="results-toolbar">
+      <span class="summary" id="summary"></span>
+      <button class="tool-btn" onclick="downloadAll()">Download all</button>
+    </div>
+    <ul class="result-list" id="resultList"></ul>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  // Each item: { name, originalSize, blob, url, width, height, outName, outType, error }
+  let items = [];        // accepted source files (File objects) kept for re-processing
+  let results = [];      // processed results, parallel to items
+
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  const formatSel = document.getElementById('format');
+  const qualityInput = document.getElementById('quality');
+  const qualityVal = document.getElementById('qualityVal');
+  const qualityWrap = document.getElementById('qualityWrap');
+
+  fileInput.addEventListener('change', e => addFiles(e.target.files));
+
+  ['dragenter','dragover'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
+  dropZone.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+  qualityInput.addEventListener('input', () => { qualityVal.textContent = (+qualityInput.value).toFixed(2); });
+  formatSel.addEventListener('change', updateQualityState);
+
+  // PNG has no quality knob — disable the slider when the *effective* output is PNG.
+  function updateQualityState() {
+    const fmt = formatSel.value;
+    // "Keep original" is mixed, so only force-disable when explicitly PNG.
+    if (fmt === 'image/png') qualityWrap.classList.add('opt-disabled');
+    else qualityWrap.classList.remove('opt-disabled');
+  }
+  updateQualityState();
+
+  function addFiles(fileList) {
+    const incoming = Array.from(fileList || []);
+    if (!incoming.length) return;
+    let added = 0, skipped = 0;
+    for (const f of incoming) {
+      if (!f.type.startsWith('image/')) { skipped++; continue; }
+      items.push(f);
+      added++;
+    }
+    fileInput.value = '';
+    if (skipped) showToast(skipped + ' non-image file' + (skipped === 1 ? '' : 's') + ' skipped');
+    if (added) { showToast('Added ' + added + ' image' + (added === 1 ? '' : 's')); processAll(); }
+    else if (!skipped) showToast('No files added');
+  }
+
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(2) + ' MB';
+  }
+
+  function extForType(type) {
+    return { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[type] || 'img';
+  }
+
+  function baseName(name) {
+    const dot = name.lastIndexOf('.');
+    return dot > 0 ? name.slice(0, dot) : name;
+  }
+
+  // Decode a File to an ImageBitmap (preferred) or HTMLImageElement.
+  function decodeImage(file) {
+    if (window.createImageBitmap) {
+      return createImageBitmap(file).catch(() => decodeViaImg(file));
+    }
+    return decodeViaImg(file);
+  }
+  function decodeViaImg(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode failed')); };
+      img.src = url;
+    });
+  }
+
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('encode failed')), type, quality);
+    });
+  }
+
+  async function scrubOne(file) {
+    const src = await decodeImage(file);
+    const srcW = src.width, srcH = src.height;
+
+    // Compute target dims (never upscale).
+    const maxDim = parseInt(document.getElementById('maxDim').value, 10) || 0;
+    let w = srcW, h = srcH;
+    if (maxDim > 0 && Math.max(srcW, srcH) > maxDim) {
+      const scale = maxDim / Math.max(srcW, srcH);
+      w = Math.max(1, Math.round(srcW * scale));
+      h = Math.max(1, Math.round(srcH * scale));
+    }
+
+    // Resolve output type. "Keep original" → use source mime if encodable, else JPEG.
+    let outType = formatSel.value;
+    if (!outType) {
+      outType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? file.type : 'image/jpeg';
+    }
+    const quality = outType === 'image/png' ? undefined : +qualityInput.value;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    // White matte for JPEG (no alpha) so transparency doesn't render black.
+    if (outType === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); }
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, w, h);
+    if (src.close) src.close(); // free ImageBitmap
+
+    let blob = await canvasToBlob(canvas, outType, quality);
+    // Some engines silently fall back to PNG for unsupported types (e.g. older WebP).
+    if (blob.type && blob.type !== outType) outType = blob.type;
+
+    return {
+      blob,
+      url: URL.createObjectURL(blob),
+      width: w, height: h,
+      outType,
+      outName: baseName(file.name) + '-scrubbed.' + extForType(outType),
+      originalSize: file.size,
+      name: file.name,
+    };
+  }
+
+  async function processAll() {
+    if (!items.length) { showToast('Add some images first'); return; }
+    // Revoke previous result URLs to avoid leaks.
+    results.forEach(r => r && r.url && URL.revokeObjectURL(r.url));
+    results = [];
+
+    const section = document.getElementById('resultsSection');
+    const list = document.getElementById('resultList');
+    section.classList.add('visible');
+
+    // Placeholder rows while we work.
+    list.innerHTML = items.map((f, i) =>
+      '<li class="result-item" id="row-' + i + '"><div class="thumb"></div>' +
+      '<div class="result-meta"><div class="fname">' + escapeHtml(f.name) + '</div>' +
+      '<div class="spinner">Scrubbing&hellip;</div></div></li>'
+    ).join('');
+
+    const btn = document.getElementById('processBtn');
+    btn.disabled = true; btn.style.opacity = '.6';
+
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const r = await scrubOne(items[i]);
+        results[i] = r;
+      } catch (err) {
+        results[i] = { error: true, name: items[i].name, originalSize: items[i].size };
+      }
+      renderRow(i);
+    }
+
+    btn.disabled = false; btn.style.opacity = '';
+    renderSummary();
+    const ok = results.filter(r => r && !r.error).length;
+    showToast('Scrubbed ' + ok + ' image' + (ok === 1 ? '' : 's'));
+  }
+
+  function renderRow(i) {
+    const row = document.getElementById('row-' + i);
+    if (!row) return;
+    const r = results[i];
+    if (r.error) {
+      row.innerHTML =
+        '<div class="thumb"></div>' +
+        '<div class="result-meta"><div class="fname">' + escapeHtml(r.name) + '</div>' +
+        '<div class="err">Could not decode this image &mdash; skipped.</div></div>';
+      return;
+    }
+    const delta = r.originalSize - r.blob.size;
+    const pct = r.originalSize > 0 ? (delta / r.originalSize) * 100 : 0;
+    const grew = r.blob.size > r.originalSize;
+    const reduction = grew
+      ? '<span class="reduction grew">+' + Math.abs(pct).toFixed(0) + '% larger</span>'
+      : '<span class="reduction">&minus;' + pct.toFixed(0) + '% smaller</span>';
+
+    row.innerHTML =
+      '<img class="thumb" src="' + r.url + '" alt="">' +
+      '<div class="result-meta">' +
+        '<div class="fname">' + escapeHtml(r.outName) + '</div>' +
+        '<div class="sizes">' + formatBytes(r.originalSize) +
+          ' <span class="arrow">&rarr;</span> ' + formatBytes(r.blob.size) +
+          ' &nbsp; ' + reduction + '</div>' +
+        '<div class="dims">' + r.width + ' &times; ' + r.height + ' px &middot; ' +
+          escapeHtml(r.outType.replace('image/', '').toUpperCase()) + '</div>' +
+        '<div class="removed">&#10003; metadata removed (EXIF, GPS, camera info)</div>' +
+      '</div>' +
+      '<div class="result-actions"><button class="tool-btn" onclick="downloadOne(' + i + ')">Download</button></div>';
+  }
+
+  function renderSummary() {
+    const good = results.filter(r => r && !r.error);
+    if (!good.length) { document.getElementById('summary').innerHTML = 'No images processed.'; return; }
+    const origTotal = good.reduce((s, r) => s + r.originalSize, 0);
+    const newTotal = good.reduce((s, r) => s + r.blob.size, 0);
+    const saved = origTotal - newTotal;
+    const pct = origTotal > 0 ? (saved / origTotal) * 100 : 0;
+    let msg = good.length + ' image' + (good.length === 1 ? '' : 's') + ' scrubbed &middot; ';
+    if (saved >= 0) msg += '<b>' + formatBytes(saved) + ' saved</b> (' + pct.toFixed(0) + '%)';
+    else msg += '<b>' + formatBytes(-saved) + ' larger</b>';
+    document.getElementById('summary').innerHTML = msg;
+  }
+
+  function downloadOne(i) {
+    const r = results[i];
+    if (!r || r.error) { showToast('Nothing to download'); return; }
+    download(r.blob, r.outName);
+    showToast('Downloaded ' + r.outName);
+  }
+
+  function downloadAll() {
+    const good = results.filter(r => r && !r.error);
+    if (!good.length) { showToast('Nothing to download'); return; }
+    // Stagger slightly so browsers don't drop concurrent downloads.
+    good.forEach((r, idx) => setTimeout(() => download(r.blob, r.outName), idx * 250));
+    showToast('Downloading ' + good.length + ' image' + (good.length === 1 ? '' : 's'));
+  }
+
+  function clearAll() {
+    results.forEach(r => r && r.url && URL.revokeObjectURL(r.url));
+    items = [];
+    results = [];
+    fileInput.value = '';
+    document.getElementById('resultList').innerHTML = '';
+    document.getElementById('resultsSection').classList.remove('visible');
+    showToast('Cleared');
+  }
+</script>
+</body>
+</html>

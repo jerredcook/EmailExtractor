@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JWT Decoder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── JWT Decoder specifics ── */
+  .input-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+  /* The three segments of the raw token, color-coded like the canonical jwt.io view */
+  .seg-h { color: var(--danger); }
+  .seg-p { color: var(--accent2); }
+  .seg-s { color: var(--accent); }
+  .seg-dot { color: var(--muted); }
+
+  .status-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    font-size: 13px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge-ok { background: var(--ok); color: var(--bg); }
+  .badge-danger { background: var(--danger); color: #fff; }
+  .badge-warn { background: var(--accent); color: var(--bg); }
+  .status-detail { color: var(--muted); }
+  .status-detail strong { color: var(--text); }
+
+  .error-box {
+    padding: 14px 16px;
+    border: 1px solid var(--danger);
+    border-radius: 4px;
+    background: rgba(255,71,71,0.08);
+    color: var(--danger);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .placeholder-box {
+    padding: 22px 20px;
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  pre.json {
+    margin: 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text);
+  }
+  .jkey { color: var(--accent); }
+  .jstr { color: var(--accent2); }
+  .jnum { color: #ffb061; }
+  .jbool { color: var(--danger); }
+  .jnull { color: var(--muted); }
+
+  .claims-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .claims-table th { text-align: left; padding: 8px 10px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); font-weight: 700; }
+  .claims-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; word-break: break-word; }
+  .claims-table tr:last-child td { border-bottom: none; }
+  .claims-table td.k { color: var(--accent); white-space: nowrap; font-weight: 700; }
+  .claims-table td.k small { display: block; color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-top: 2px; }
+  .claims-table .rel { color: var(--muted); }
+  .claims-table .rel.past { color: var(--danger); }
+  .claims-table .rel.future-ok { color: var(--ok); }
+
+  .sig-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--accent);
+    word-break: break-all;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 14px;
+  }
+  .sig-warn {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--danger);
+    border-left-width: 4px;
+    border-radius: 4px;
+    background: rgba(255,71,71,0.08);
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .sig-warn strong { color: var(--danger); }
+
+  .card-actions { display: flex; gap: 8px; }
+  .hide { display: none; }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>JWT<span>Decoder</span></h1>
+  <p class="subtitle">Paste a JSON Web Token to inspect its header and claims locally &mdash; decode only, your token never leaves the browser.</p>
+</header>
+
+<div class="main">
+
+  <div class="card">
+    <div class="card-header"><span><span class="step">1</span>Token</span></div>
+    <div class="card-body">
+      <label class="field" for="tokenInput">Paste a JWT (xxxxx.yyyyy.zzzzz)</label>
+      <textarea id="tokenInput" spellcheck="false" autocapitalize="off" autocorrect="off"
+        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0..."></textarea>
+      <div class="input-actions">
+        <button class="tool-btn" id="loadSample" type="button">Load sample</button>
+        <button class="tool-btn" id="clearBtn" type="button">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Neutral placeholder / inline error region -->
+  <div class="card" id="messageCard">
+    <div class="card-body">
+      <div class="placeholder-box" id="placeholder">
+        Paste a token above to decode it. Everything happens in your browser &mdash; nothing is sent anywhere.
+      </div>
+      <div class="error-box hide" id="errorBox"></div>
+    </div>
+  </div>
+
+  <!-- Results (hidden until a valid-shaped token is decoded) -->
+  <div id="results" class="hide" style="display:flex;flex-direction:column;gap:20px;">
+
+    <div class="status-banner" id="statusBanner"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <span><span class="step">2</span>Header</span>
+        <span class="card-actions"><button class="tool-btn" id="copyHeader" type="button">Copy</button></span>
+      </div>
+      <div class="card-body"><pre class="json" id="headerJson"></pre></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span><span class="step">3</span>Payload</span>
+        <span class="card-actions"><button class="tool-btn" id="copyPayload" type="button">Copy</button></span>
+      </div>
+      <div class="card-body"><pre class="json" id="payloadJson"></pre></div>
+    </div>
+
+    <div class="card" id="claimsCard">
+      <div class="card-header"><span>Registered claims</span></div>
+      <div class="card-body"><table class="claims-table"><tbody id="claimsBody"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span>Signature</span></div>
+      <div class="card-body">
+        <div class="sig-text" id="sigText"></div>
+        <div class="sig-warn">
+          <strong>Signature is NOT verified.</strong> This tool only decodes the token &mdash;
+          it does not check the signature against any key. Do not trust the contents of an
+          unverified token; anyone can craft a token with arbitrary claims.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  var SAMPLE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2F1dGgudG9vbHNoZWQuZXhhbXBsZSIsInN1YiI6InVzZXJfODY3NTMwOSIsImF1ZCI6InRvb2xzaGVkLWFwaSIsIm5hbWUiOiJBZGEgTG92ZWxhY2UiLCJhZG1pbiI6ZmFsc2UsImlhdCI6MTcxOTQ0NjQwMCwibmJmIjoxNzE5NDQ2NDAwLCJleHAiOjE4MTQwNTQ0MDAsImp0aSI6ImExYjJjM2Q0LTAwMDAtNGVlZi05MDAxLWZlZWRmYWNlMTIzNCIsInNjb3BlIjoicmVhZCB3cml0ZSJ9.qWvFh3kA0xS9bN7pL2mZ8tYrE5cVuI6oXa1Jd0fGsHk";
+
+  var els = {
+    input: document.getElementById('tokenInput'),
+    messageCard: document.getElementById('messageCard'),
+    placeholder: document.getElementById('placeholder'),
+    errorBox: document.getElementById('errorBox'),
+    results: document.getElementById('results'),
+    status: document.getElementById('statusBanner'),
+    headerJson: document.getElementById('headerJson'),
+    payloadJson: document.getElementById('payloadJson'),
+    claimsCard: document.getElementById('claimsCard'),
+    claimsBody: document.getElementById('claimsBody'),
+    sigText: document.getElementById('sigText'),
+    copyHeader: document.getElementById('copyHeader'),
+    copyPayload: document.getElementById('copyPayload')
+  };
+
+  // raw header/payload JSON strings stashed for the copy buttons
+  var lastHeaderJson = '', lastPayloadJson = '';
+
+  // ── base64url → JSON ───────────────────────────────────────────────
+  // Accept the URL-safe alphabet (-_), restore stripped '=' padding, and
+  // decode UTF-8 correctly (atob alone mangles multibyte chars).
+  function b64urlDecode(seg){
+    var s = String(seg).replace(/-/g,'+').replace(/_/g,'/');
+    // strip any whitespace the user may have pasted in
+    s = s.replace(/\s+/g,'');
+    var pad = s.length % 4;
+    if (pad === 1) throw new Error('invalid base64url length');
+    if (pad) s += '===='.slice(pad);
+    var bin;
+    try { bin = atob(s); }
+    catch(e){ throw new Error('not valid base64url'); }
+    // bytes → UTF-8 string
+    var bytes = new Uint8Array(bin.length);
+    for (var i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    try { return new TextDecoder('utf-8',{fatal:false}).decode(bytes); }
+    catch(e){ return bin; }
+  }
+
+  // Pretty-print JSON with 2-space indent, lightly colored. Operates on the
+  // re-serialized object so escaping is correct and structure is normalized.
+  function highlightJson(value){
+    var json = JSON.stringify(value, null, 2);
+    var out = '';
+    // tokenize against the *escaped* string so injected markup is impossible
+    var re = /("(\\.|[^"\\])*"\s*:)|("(\\.|[^"\\])*")|(\b-?\d+(\.\d+)?([eE][+-]?\d+)?\b)|(\btrue\b|\bfalse\b)|(\bnull\b)/g;
+    var last = 0, m;
+    while ((m = re.exec(json)) !== null){
+      out += escapeHtml(json.slice(last, m.index));
+      var tok = m[0], cls;
+      if (m[1]) cls = 'jkey';
+      else if (m[3]) cls = 'jstr';
+      else if (m[5]) cls = 'jnum';
+      else if (m[8]) cls = 'jbool';
+      else cls = 'jnull';
+      out += '<span class="'+cls+'">'+escapeHtml(tok)+'</span>';
+      last = re.lastIndex;
+    }
+    out += escapeHtml(json.slice(last));
+    return out;
+  }
+
+  // ── time formatting for exp / iat / nbf ────────────────────────────
+  function pad2(n){ return (n<10?'0':'')+n; }
+  function fmtUTC(d){
+    return d.getUTCFullYear()+'-'+pad2(d.getUTCMonth()+1)+'-'+pad2(d.getUTCDate())+' '+
+           pad2(d.getUTCHours())+':'+pad2(d.getUTCMinutes())+':'+pad2(d.getUTCSeconds())+' UTC';
+  }
+  function fmtLocal(d){
+    try { return d.toLocaleString(undefined, {dateStyle:'medium', timeStyle:'medium'}); }
+    catch(e){ return d.toString(); }
+  }
+  function relative(targetMs){
+    var diff = targetMs - Date.now();           // >0 = future, <0 = past
+    var future = diff >= 0;
+    var s = Math.abs(diff)/1000;
+    var unit, val;
+    if (s < 60){ val = Math.round(s); unit='second'; }
+    else if (s < 3600){ val = Math.round(s/60); unit='minute'; }
+    else if (s < 86400){ val = Math.round(s/3600); unit='hour'; }
+    else if (s < 2592000){ val = Math.round(s/86400); unit='day'; }
+    else if (s < 31536000){ val = Math.round(s/2592000); unit='month'; }
+    else { val = Math.round(s/31536000); unit='year'; }
+    var label = val + ' ' + unit + (val===1?'':'s');
+    return future ? ('in ' + label) : (label + ' ago');
+  }
+
+  // human-readable name for the standard claims
+  var CLAIM_NAMES = {
+    iss:'Issuer', sub:'Subject', aud:'Audience', exp:'Expires',
+    nbf:'Not before', iat:'Issued at', jti:'JWT ID'
+  };
+  var TIME_CLAIMS = { exp:1, iat:1, nbf:1 };
+
+  function renderTimeCell(name, raw){
+    var n = Number(raw);
+    if (!isFinite(n)) {
+      return '<td>'+escapeHtml(String(raw))+' <span class="rel">(not a numeric timestamp)</span></td>';
+    }
+    var d = new Date(n*1000);
+    if (isNaN(d.getTime())) {
+      return '<td>'+escapeHtml(String(raw))+' <span class="rel">(out of range)</span></td>';
+    }
+    var relCls = 'rel';
+    var nowMs = Date.now(), t = n*1000;
+    if (name === 'exp') relCls += (t < nowMs ? ' past' : ' future-ok');
+    else if (name === 'nbf') relCls += (t > nowMs ? ' past' : ' future-ok');
+    return '<td>'+
+      escapeHtml(fmtUTC(d))+'<br>'+
+      '<span class="rel">'+escapeHtml(fmtLocal(d))+' (local)</span><br>'+
+      '<span class="'+relCls+'">'+escapeHtml(relative(t))+'</span>'+
+    '</td>';
+  }
+
+  function renderClaims(payload){
+    var order = ['iss','sub','aud','exp','nbf','iat','jti'];
+    var rows = '';
+    for (var i=0;i<order.length;i++){
+      var k = order[i];
+      if (!(k in payload)) continue;
+      var v = payload[k];
+      var cell;
+      if (TIME_CLAIMS[k]) {
+        cell = renderTimeCell(k, v);
+      } else {
+        var disp = (typeof v === 'object') ? JSON.stringify(v) : String(v);
+        cell = '<td>'+escapeHtml(disp)+'</td>';
+      }
+      rows += '<tr><td class="k">'+escapeHtml(k)+'<small>'+escapeHtml(CLAIM_NAMES[k])+'</small></td>'+cell+'</tr>';
+    }
+    if (!rows){
+      els.claimsCard.classList.add('hide');
+      els.claimsBody.innerHTML = '';
+      return;
+    }
+    els.claimsCard.classList.remove('hide');
+    els.claimsBody.innerHTML =
+      '<tr><th style="width:160px">Claim</th><th>Value</th></tr>' + rows;
+  }
+
+  function renderStatus(payload){
+    var nowMs = Date.now();
+    var exp = ('exp' in payload) ? Number(payload.exp) : null;
+    var nbf = ('nbf' in payload) ? Number(payload.nbf) : null;
+
+    var badgeClass, badgeText, detail;
+    if (exp !== null && isFinite(exp) && exp*1000 < nowMs){
+      badgeClass = 'badge-danger'; badgeText = 'Expired';
+      detail = 'Token <strong>exp</strong> passed '+escapeHtml(relative(exp*1000))+'.';
+    } else if (nbf !== null && isFinite(nbf) && nbf*1000 > nowMs){
+      badgeClass = 'badge-warn'; badgeText = 'Not yet valid';
+      detail = 'Token is not valid until <strong>nbf</strong> &mdash; '+escapeHtml(relative(nbf*1000))+'.';
+    } else {
+      badgeClass = 'badge-ok'; badgeText = 'Active (not verified)';
+      detail = (exp !== null && isFinite(exp))
+        ? 'Within validity window. Expires '+escapeHtml(relative(exp*1000))+'.'
+        : 'No <strong>exp</strong> claim &mdash; this token has no stated expiry.';
+    }
+    els.status.innerHTML =
+      '<span class="badge '+badgeClass+'">'+escapeHtml(badgeText)+'</span>'+
+      '<span class="status-detail">'+detail+'</span>';
+  }
+
+  // ── states ─────────────────────────────────────────────────────────
+  function showPlaceholder(){
+    els.results.classList.add('hide');
+    els.errorBox.classList.add('hide');
+    els.placeholder.classList.remove('hide');
+    els.messageCard.classList.remove('hide');
+  }
+  function showError(msg){
+    els.results.classList.add('hide');
+    els.placeholder.classList.add('hide');
+    els.errorBox.classList.remove('hide');
+    els.messageCard.classList.remove('hide');
+    els.errorBox.textContent = msg;
+  }
+  function showResults(){
+    els.messageCard.classList.add('hide');
+    els.results.classList.remove('hide');
+  }
+
+  // ── main decode pipeline ───────────────────────────────────────────
+  function decode(){
+    var raw = els.input.value.trim();
+    if (!raw){ showPlaceholder(); return; }
+
+    var parts = raw.split('.');
+    if (parts.length !== 3){
+      showError('Not a JWT: expected 3 dot-separated segments (header.payload.signature), got '+parts.length+'.');
+      return;
+    }
+    if (!parts[0] || !parts[1]){
+      showError('Header or payload segment is empty.');
+      return;
+    }
+
+    var headerStr, payloadStr, headerObj, payloadObj;
+    try { headerStr = b64urlDecode(parts[0]); }
+    catch(e){ showError('Could not base64url-decode the header segment: '+e.message+'.'); return; }
+    try { payloadStr = b64urlDecode(parts[1]); }
+    catch(e){ showError('Could not base64url-decode the payload segment: '+e.message+'.'); return; }
+
+    try { headerObj = JSON.parse(headerStr); }
+    catch(e){ showError('Header is not valid JSON: '+e.message+'.'); return; }
+    try { payloadObj = JSON.parse(payloadStr); }
+    catch(e){ showError('Payload is not valid JSON: '+e.message+'.'); return; }
+
+    if (payloadObj === null || typeof payloadObj !== 'object' || Array.isArray(payloadObj)){
+      // still render header/payload, but the claims/status logic expects an object
+      payloadObj = payloadObj;
+    }
+
+    lastHeaderJson = JSON.stringify(headerObj, null, 2);
+    lastPayloadJson = JSON.stringify(payloadObj, null, 2);
+
+    els.headerJson.innerHTML = highlightJson(headerObj);
+    els.payloadJson.innerHTML = highlightJson(payloadObj);
+
+    var safePayload = (payloadObj && typeof payloadObj === 'object' && !Array.isArray(payloadObj)) ? payloadObj : {};
+    renderStatus(safePayload);
+    renderClaims(safePayload);
+
+    els.sigText.textContent = parts[2] ? parts[2] : '(empty — token has no signature segment)';
+
+    showResults();
+  }
+
+  // ── copy helpers ───────────────────────────────────────────────────
+  function copyText(text, what){
+    if (!text){ showToast('Nothing to copy'); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(
+        function(){ showToast(what+' copied'); },
+        function(){ legacyCopy(text, what); }
+      );
+    } else {
+      legacyCopy(text, what);
+    }
+  }
+  function legacyCopy(text, what){
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast(what+' copied');
+    } catch(e){ showToast('Copy failed'); }
+  }
+
+  // ── wiring ─────────────────────────────────────────────────────────
+  els.input.addEventListener('input', decode);
+  els.input.addEventListener('paste', function(){ setTimeout(decode, 0); });
+  document.getElementById('loadSample').addEventListener('click', function(){
+    els.input.value = SAMPLE; decode(); showToast('Sample loaded');
+  });
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    els.input.value=''; decode(); els.input.focus();
+  });
+  els.copyHeader.addEventListener('click', function(){ copyText(lastHeaderJson, 'Header JSON'); });
+  els.copyPayload.addEventListener('click', function(){ copyText(lastPayloadJson, 'Payload JSON'); });
+
+  // initial state
+  decode();
+</script>
+</body>
+</html>

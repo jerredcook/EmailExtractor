@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timestamp</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], input[type=datetime-local], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  input[type=datetime-local] { color-scheme: dark; }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── tool-specific ── */
+  .now-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 560px) { .now-grid { grid-template-columns: 1fr; } }
+
+  .now-cell { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px 16px; }
+  .now-cell .k { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .now-cell .v { font-size: 18px; color: var(--accent2); word-break: break-all; }
+  .now-cell.epoch { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .now-cell.epoch .epochwrap { display: flex; gap: 28px; flex-wrap: wrap; }
+  .now-cell.epoch .v { font-size: 26px; color: var(--accent); }
+
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row > .grow { flex: 1; min-width: 200px; }
+
+  .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .toggle button {
+    background: transparent; color: var(--muted); border: none; border-radius: 0;
+    padding: 11px 16px; font-size: 12px; letter-spacing: 0.05em;
+  }
+  .toggle button.active { background: var(--accent); color: var(--bg); }
+  .toggle button:not(.active):hover { color: var(--text); }
+
+  .detect-note { font-size: 11px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
+  .detect-note b { color: var(--accent2); }
+
+  .out-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .out-row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg); padding: 11px 14px;
+  }
+  .out-row .ok { flex: 0 0 130px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .out-row .ov { flex: 1; font-size: 13px; color: var(--text); word-break: break-all; }
+  .out-row .ov.accent { color: var(--accent2); }
+  .copy-btn {
+    flex: 0 0 auto; background: transparent; color: var(--muted);
+    border: 1px solid var(--border); padding: 6px 12px; font-size: 11px;
+  }
+  .copy-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .errmsg { color: var(--danger); font-size: 12px; margin-top: 12px; min-height: 1.2em; }
+
+  .sublabel { font-size: 11px; color: var(--muted); margin: 16px 0 8px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .or-sep { text-align: center; color: var(--muted); font-size: 11px; margin: 14px 0; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>Time<span>stamp</span></h1>
+  <p class="subtitle">convert between Unix timestamps and human dates, in your local zone and UTC &mdash; all in the browser.</p>
+</header>
+
+<div class="main">
+
+  <!-- Current time panel -->
+  <div class="card">
+    <div class="card-header">
+      <span>Right now</span>
+      <span id="tzName" style="text-transform:none;letter-spacing:0"></span>
+    </div>
+    <div class="card-body">
+      <div class="now-grid">
+        <div class="now-cell epoch">
+          <div class="epochwrap">
+            <div>
+              <div class="k">Unix &middot; seconds</div>
+              <div class="v" id="nowSec">&mdash;</div>
+            </div>
+            <div>
+              <div class="k">Unix &middot; milliseconds</div>
+              <div class="v" id="nowMs">&mdash;</div>
+            </div>
+          </div>
+          <button class="tool-btn" id="copyNow">Copy epoch (s)</button>
+        </div>
+        <div class="now-cell">
+          <div class="k">Local time</div>
+          <div class="v" id="nowLocal">&mdash;</div>
+        </div>
+        <div class="now-cell">
+          <div class="k">UTC time</div>
+          <div class="v" id="nowUtc">&mdash;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timestamp → date -->
+  <div class="card">
+    <div class="card-header"><span><span class="step">1</span>Timestamp &rarr; date</span></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="grow">
+          <label class="field" for="tsIn">Unix timestamp</label>
+          <input type="text" id="tsIn" inputmode="numeric" placeholder="e.g. 1719500000 or 1719500000000" autocomplete="off">
+        </div>
+        <div class="toggle" id="unitToggle" role="group" aria-label="Unit">
+          <button type="button" data-unit="auto" class="active">Auto</button>
+          <button type="button" data-unit="s">Seconds</button>
+          <button type="button" data-unit="ms">Millis</button>
+        </div>
+      </div>
+      <div class="detect-note" id="detectNote"></div>
+      <div class="errmsg" id="tsErr"></div>
+      <div id="tsOut" style="margin-top:14px;display:none">
+        <div class="out-list">
+          <div class="out-row"><span class="ok">Local</span><span class="ov accent" id="oLocal"></span><button class="copy-btn" data-copy="oLocal">Copy</button></div>
+          <div class="out-row"><span class="ok">UTC</span><span class="ov" id="oUtc"></span><button class="copy-btn" data-copy="oUtc">Copy</button></div>
+          <div class="out-row"><span class="ok">ISO 8601</span><span class="ov" id="oIso"></span><button class="copy-btn" data-copy="oIso">Copy</button></div>
+          <div class="out-row"><span class="ok">RFC string</span><span class="ov" id="oRfc"></span><button class="copy-btn" data-copy="oRfc">Copy</button></div>
+          <div class="out-row"><span class="ok">Day of week</span><span class="ov" id="oDow"></span><button class="copy-btn" data-copy="oDow">Copy</button></div>
+          <div class="out-row"><span class="ok">Relative</span><span class="ov" id="oRel"></span><button class="copy-btn" data-copy="oRel">Copy</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date → timestamp -->
+  <div class="card">
+    <div class="card-header"><span><span class="step">2</span>Date &rarr; timestamp</span></div>
+    <div class="card-body">
+      <label class="field" for="dtLocal">Pick a local date &amp; time</label>
+      <input type="datetime-local" id="dtLocal" step="1">
+
+      <div class="or-sep">&mdash; or &mdash;</div>
+
+      <label class="field" for="dtText">Type any date (parsed by your browser)</label>
+      <input type="text" id="dtText" placeholder="e.g. 2026-06-27 14:30, June 27 2026, or 2026-06-27T14:30:00Z" autocomplete="off">
+
+      <div class="errmsg" id="dtErr"></div>
+      <div id="dtOut" style="margin-top:14px;display:none">
+        <div class="out-list">
+          <div class="out-row"><span class="ok">Unix &middot; s</span><span class="ov accent" id="dSec"></span><button class="copy-btn" data-copy="dSec">Copy</button></div>
+          <div class="out-row"><span class="ok">Unix &middot; ms</span><span class="ov" id="dMs"></span><button class="copy-btn" data-copy="dMs">Copy</button></div>
+          <div class="out-row"><span class="ok">ISO 8601</span><span class="ov" id="dIso"></span><button class="copy-btn" data-copy="dIso">Copy</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  const $ = (id) => document.getElementById(id);
+
+  // ----- shared formatting helpers -----
+  const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  function pad(n, w){ n = String(Math.abs(n)); while (n.length < w) n = '0' + n; return n; }
+
+  // Local time as a readable string, no timezone-data dependency.
+  function fmtLocal(d){
+    try {
+      return d.toLocaleString(undefined, {
+        weekday: 'short', year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      });
+    } catch (e) {
+      return d.toString();
+    }
+  }
+
+  function fmtUtc(d){
+    return DOW[d.getUTCDay()].slice(0,3) + ', ' +
+      pad(d.getUTCDate(),2) + ' ' +
+      ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()] + ' ' +
+      d.getUTCFullYear() + ' ' +
+      pad(d.getUTCHours(),2) + ':' + pad(d.getUTCMinutes(),2) + ':' + pad(d.getUTCSeconds(),2) + ' UTC';
+  }
+
+  // ISO 8601 in LOCAL time, with explicit offset (e.g. 2026-06-27T14:30:00-04:00).
+  function isoLocal(d){
+    const off = -d.getTimezoneOffset(); // minutes east of UTC
+    const sign = off >= 0 ? '+' : '-';
+    const oh = pad(Math.trunc(Math.abs(off) / 60), 2);
+    const om = pad(Math.abs(off) % 60, 2);
+    return d.getFullYear() + '-' + pad(d.getMonth()+1,2) + '-' + pad(d.getDate(),2) +
+      'T' + pad(d.getHours(),2) + ':' + pad(d.getMinutes(),2) + ':' + pad(d.getSeconds(),2) +
+      sign + oh + ':' + om;
+  }
+
+  function relativePhrase(d){
+    const diff = d.getTime() - Date.now(); // ms; positive = future
+    const future = diff >= 0;
+    let s = Math.abs(diff) / 1000;
+    const units = [
+      ['year', 31557600], ['month', 2629800], ['week', 604800],
+      ['day', 86400], ['hour', 3600], ['minute', 60], ['second', 1]
+    ];
+    if (s < 1) return 'just now';
+    for (const [name, secs] of units) {
+      if (s >= secs) {
+        const n = Math.floor(s / secs);
+        const unit = name + (n === 1 ? '' : 's');
+        return future ? ('in ' + n + ' ' + unit) : (n + ' ' + unit + ' ago');
+      }
+    }
+    return 'just now';
+  }
+
+  // ===== Current-time panel =====
+  function tickNow(){
+    const now = Date.now();
+    $('nowSec').textContent = Math.floor(now / 1000);
+    $('nowMs').textContent = now;
+    const d = new Date(now);
+    $('nowLocal').textContent = fmtLocal(d);
+    $('nowUtc').textContent = fmtUtc(d);
+  }
+  try { $('tzName').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) {}
+  tickNow();
+  setInterval(tickNow, 250);
+
+  $('copyNow').addEventListener('click', () => {
+    copyText(String(Math.floor(Date.now() / 1000)), 'Current epoch copied');
+  });
+
+  // ===== Copy plumbing =====
+  function copyText(text, msg){
+    const done = () => showToast(msg || 'Copied');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, done){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch(e) { showToast('Copy failed'); }
+    document.body.removeChild(ta);
+  }
+  // Delegate all [data-copy] buttons (copy the referenced element's text).
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    const el = $(btn.getAttribute('data-copy'));
+    if (el && el.textContent) copyText(el.textContent, 'Copied');
+  });
+
+  // ===== Timestamp → date =====
+  let unitMode = 'auto'; // 'auto' | 's' | 'ms'
+
+  // Decide whether the raw number is seconds or ms.
+  // Heuristic: treat as ms when |value| has the magnitude of a recent ms epoch.
+  // ms epochs since ~2001 are >= 1e12; second epochs for a similar range are ~1e9.
+  function detectUnit(absVal){
+    return absVal >= 1e12 ? 'ms' : 's';
+  }
+
+  function renderTsToDate(){
+    const raw = $('tsIn').value.trim();
+    const err = $('tsErr');
+    const out = $('tsOut');
+    const note = $('detectNote');
+
+    if (raw === '') {
+      err.textContent = '';
+      note.textContent = '';
+      out.style.display = 'none';
+      return;
+    }
+
+    // Accept optional sign, digits, optional decimal (fractional seconds/ms).
+    if (!/^[+-]?\d+(\.\d+)?$/.test(raw)) {
+      err.textContent = 'Invalid timestamp — digits only (optional leading sign / decimal).';
+      note.textContent = '';
+      out.style.display = 'none';
+      return;
+    }
+
+    const num = Number(raw);
+    if (!isFinite(num)) {
+      err.textContent = 'Invalid timestamp.';
+      note.textContent = '';
+      out.style.display = 'none';
+      return;
+    }
+
+    const unit = unitMode === 'auto' ? detectUnit(Math.abs(num)) : unitMode;
+    const ms = unit === 'ms' ? num : num * 1000;
+
+    if (unitMode === 'auto') {
+      note.innerHTML = 'Detected as <b>' + (unit === 'ms' ? 'milliseconds' : 'seconds') + '</b> (toggle to override).';
+    } else {
+      note.innerHTML = 'Reading as <b>' + (unit === 'ms' ? 'milliseconds' : 'seconds') + '</b>.';
+    }
+
+    const d = new Date(ms);
+    if (isNaN(d.getTime())) {
+      err.textContent = 'Timestamp out of representable date range.';
+      out.style.display = 'none';
+      return;
+    }
+
+    err.textContent = '';
+    $('oLocal').textContent = fmtLocal(d);
+    $('oUtc').textContent = fmtUtc(d);
+    $('oIso').textContent = d.toISOString();          // ISO 8601, UTC (Z)
+    $('oRfc').textContent = d.toUTCString();          // RFC 1123 / 7231 style
+    $('oDow').textContent = DOW[d.getDay()] + ' (local) / ' + DOW[d.getUTCDay()] + ' (UTC)';
+    $('oRel').textContent = relativePhrase(d);
+    out.style.display = '';
+  }
+
+  $('tsIn').addEventListener('input', renderTsToDate);
+
+  // Unit toggle
+  Array.from($('unitToggle').querySelectorAll('button')).forEach((b) => {
+    b.addEventListener('click', () => {
+      $('unitToggle').querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      unitMode = b.getAttribute('data-unit');
+      renderTsToDate();
+    });
+  });
+
+  // Keep relative phrase fresh while a timestamp is shown.
+  setInterval(() => {
+    if ($('tsOut').style.display !== 'none' && $('tsIn').value.trim() !== '') {
+      // Only recompute the cheap relative field.
+      const raw = $('tsIn').value.trim();
+      if (/^[+-]?\d+(\.\d+)?$/.test(raw)) {
+        const num = Number(raw);
+        if (isFinite(num)) {
+          const unit = unitMode === 'auto' ? detectUnit(Math.abs(num)) : unitMode;
+          const d = new Date(unit === 'ms' ? num : num * 1000);
+          if (!isNaN(d.getTime())) $('oRel').textContent = relativePhrase(d);
+        }
+      }
+    }
+  }, 1000);
+
+  // ===== Date → timestamp =====
+  // We track which input the user last touched so they don't fight each other.
+  function renderDateToTs(d, sourceErrEl, otherErrEl){
+    const out = $('dtOut');
+    if (!d || isNaN(d.getTime())) {
+      sourceErrEl.textContent = 'Invalid date.';
+      out.style.display = 'none';
+      return;
+    }
+    sourceErrEl.textContent = '';
+    if (otherErrEl) otherErrEl.textContent = '';
+    const ms = d.getTime();
+    $('dSec').textContent = Math.floor(ms / 1000);
+    $('dMs').textContent = ms;
+    $('dIso').textContent = d.toISOString();
+    out.style.display = '';
+  }
+
+  function clearDateOut(){
+    // Hide only if BOTH inputs are empty.
+    if ($('dtLocal').value === '' && $('dtText').value.trim() === '') {
+      $('dtOut').style.display = 'none';
+      $('dtErr').textContent = '';
+    }
+  }
+
+  // datetime-local → interpret as LOCAL time.
+  // The value looks like "2026-06-27T14:30" or with seconds "....:30:00".
+  function parseDatetimeLocal(v){
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.(\d{1,3}))?$/.exec(v);
+    if (!m) return null;
+    const ms = m[7] ? Number((m[7] + '000').slice(0,3)) : 0;
+    // Construct in local time via the Date(y, mo, d, h, mi, s, ms) constructor.
+    const d = new Date(
+      Number(m[1]), Number(m[2]) - 1, Number(m[3]),
+      Number(m[4]), Number(m[5]), m[6] ? Number(m[6]) : 0, ms
+    );
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  $('dtLocal').addEventListener('input', () => {
+    const v = $('dtLocal').value;
+    if (v === '') { clearDateOut(); return; }
+    const d = parseDatetimeLocal(v);
+    renderDateToTs(d, $('dtErr'), null);
+  });
+
+  $('dtText').addEventListener('input', () => {
+    const v = $('dtText').value.trim();
+    if (v === '') { clearDateOut(); return; }
+    // new Date(...) parses many formats; bare date-only ISO is UTC, but
+    // datetime strings without zone are local per the engine — that's expected.
+    const d = new Date(v);
+    renderDateToTs(d, $('dtErr'), null);
+  });
+
+  // Seed the datetime-local picker with "now" (local) for convenience, no output shown yet.
+  (function seedPicker(){
+    const d = new Date();
+    $('dtLocal').value =
+      d.getFullYear() + '-' + pad(d.getMonth()+1,2) + '-' + pad(d.getDate(),2) +
+      'T' + pad(d.getHours(),2) + ':' + pad(d.getMinutes(),2) + ':' + pad(d.getSeconds(),2);
+  })();
+</script>
+</body>
+</html>
