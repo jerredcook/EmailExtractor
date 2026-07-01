@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOTP Codes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── TOTP-specific ── */
+  .add-row { display: flex; gap: 10px; }
+  .add-row input { flex: 1; }
+  .hint { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .hint code { color: var(--accent2); font-size: 11px; }
+  .inline-error { display: none; margin-top: 10px; color: var(--danger); font-size: 12px; line-height: 1.5; }
+  .inline-error.show { display: block; }
+
+  .entries { display: flex; flex-direction: column; gap: 12px; }
+  .empty-state { color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0; }
+
+  .entry {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 18px;
+  }
+  .entry-info { flex: 1; min-width: 0; }
+  .entry-issuer { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent2); margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .entry-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .entry-code {
+    font-size: clamp(1.6rem, 5vw, 2.3rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    cursor: pointer;
+    line-height: 1.1;
+    transition: color .15s;
+    user-select: all;
+  }
+  .entry-code:hover { color: var(--accent); }
+  .entry-next { margin-top: 6px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .entry-next:hover { color: var(--accent2); }
+  .entry-next b { color: inherit; font-weight: 700; letter-spacing: 0.05em; }
+  .entry-meta { margin-top: 6px; font-size: 11px; color: var(--muted); }
+
+  .entry-ring { flex: none; width: 60px; height: 60px; }
+  .entry-ring .track { fill: none; stroke: var(--border); stroke-width: 4; }
+  .entry-ring .arc { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 30px 30px; transition: stroke-dashoffset .5s linear, stroke .3s; }
+  .entry-ring .arc.low { stroke: var(--danger); }
+  .entry-ring text { fill: var(--text); font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; }
+
+  .entry-remove { flex: none; }
+
+  .privacy-body { font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .privacy-body strong { color: var(--text); }
+  .privacy-body ul { list-style: none; margin-top: 8px; }
+  .privacy-body li { padding-left: 16px; position: relative; margin-bottom: 6px; }
+  .privacy-body li::before { content: '\2192'; position: absolute; left: 0; color: var(--accent); }
+
+  @media (max-width: 560px) {
+    .add-row { flex-direction: column; }
+    .entry { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>TOTP<span>Codes</span></h1>
+  <p class="subtitle">Paste a 2FA secret or otpauth:// URI and get live one-time codes &mdash; computed with WebCrypto in your browser, never stored, never sent anywhere.</p>
+</header>
+
+<div class="main">
+
+  <div class="card">
+    <div class="card-header">
+      <div><span class="step">1</span>Add a secret</div>
+      <span>RFC 6238</span>
+    </div>
+    <div class="card-body">
+      <label class="field" for="secretInput">Base32 secret or otpauth:// URI</label>
+      <div class="add-row">
+        <input type="text" id="secretInput" spellcheck="false" autocomplete="off"
+               placeholder="JBSWY3DPEHPK3PXP &mdash; or &mdash; otpauth://totp/Acme:you@example.com?secret=&hellip;">
+        <button class="btn-primary" id="addBtn">Add</button>
+        <button class="btn-secondary" id="demoBtn" title="Adds the well-known documentation secret JBSWY3DPEHPK3PXP">Load demo secret</button>
+      </div>
+      <div class="inline-error" id="addError"></div>
+      <p class="hint">
+        Accepts a raw base32 secret (spaces, lowercase and <code>=</code> padding tolerated) or a full
+        <code>otpauth://totp/&hellip;</code> URI &mdash; label, issuer, <code>digits</code> (6&ndash;8),
+        <code>period</code> and <code>algorithm</code> (SHA1 / SHA256 / SHA512) are honored.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div><span class="step">2</span>Live codes</div>
+      <span id="entryCount"></span>
+    </div>
+    <div class="card-body">
+      <div class="entries" id="entries"></div>
+      <div class="empty-state" id="emptyState">No entries yet &mdash; add a secret above, or load the demo.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div>Privacy &mdash; read this</div></div>
+    <div class="card-body privacy-body">
+      <strong>Entries live only in this page's memory and vanish when you reload or close the tab.</strong>
+      That is deliberate &mdash; nothing is written to disk, localStorage, cookies, or anywhere else.
+      <ul>
+        <li>Codes are computed locally with WebCrypto (HMAC-SHA-1/256/512). No network requests; works offline.</li>
+        <li>Great for testing 2FA during development, setting up a service, or reading a code off a secret you already legitimately have.</li>
+        <li>A phone authenticator app is the right home for <strong>long-term</strong> secrets &mdash; this page intentionally forgets everything.</li>
+        <li>Anyone who can see a TOTP secret can generate its codes forever. Treat secrets like passwords; clear your clipboard after pasting one.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  // ── TOTP core (verified against RFC 6238 Appendix B + RFC 4226 vectors) ──
+
+  // RFC 4648 base32 → bytes. Tolerates lowercase, spaces/hyphens, '=' padding.
+  function b32decode(s){
+    const clean = String(s).toUpperCase().replace(/[\s-]/g,'').replace(/=+$/,'');
+    if(!clean) throw new Error('Empty secret');
+    const A='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits=0, val=0; const out=[];
+    for(const ch of clean){
+      const idx=A.indexOf(ch);
+      if(idx<0) throw new Error('Invalid base32 character: "'+ch+'"');
+      val=(val<<5)|idx; bits+=5;
+      if(bits>=8){ out.push((val>>>(bits-8))&0xff); bits-=8; }
+    }
+    if(!out.length) throw new Error('Secret too short');
+    return new Uint8Array(out);
+  }
+
+  function importTotpKey(keyBytes, algorithm){ // algorithm: 'SHA-1' | 'SHA-256' | 'SHA-512'
+    return crypto.subtle.importKey('raw', keyBytes, {name:'HMAC', hash:{name:algorithm}}, false, ['sign']);
+  }
+
+  // HOTP(key, counter) with RFC 4226 dynamic truncation; TOTP = counter floor(t/period).
+  async function totpAt(key, counter, digits){
+    const buf=new ArrayBuffer(8), dv=new DataView(buf);
+    dv.setUint32(0, Math.floor(counter/4294967296)); // 8-byte big-endian counter
+    dv.setUint32(4, counter>>>0);
+    const mac=new Uint8Array(await crypto.subtle.sign('HMAC', key, buf));
+    const off=mac[mac.length-1]&0x0f;
+    const bin=((mac[off]&0x7f)<<24)|(mac[off+1]<<16)|(mac[off+2]<<8)|mac[off+3];
+    return String(bin % (10**digits)).padStart(digits,'0');
+  }
+
+  // ── input parsing ──
+
+  function parseOtpauth(uri){
+    const m=uri.match(/^otpauth:\/\/([^\/?#]+)\/?([^?#]*)(?:\?([^#]*))?/i);
+    if(!m) throw new Error('Could not parse otpauth:// URI');
+    const type=m[1].toLowerCase();
+    if(type!=='totp') throw new Error('Only totp URIs are supported (got "'+type+'")');
+    let label=m[2]||''; try{ label=decodeURIComponent(label); }catch(e){ /* keep raw */ }
+    const q=new URLSearchParams(m[3]||'');
+    const secret=q.get('secret');
+    if(!secret) throw new Error('URI has no secret= parameter');
+    let issuer=q.get('issuer')||'';
+    if(label.includes(':')){
+      if(!issuer) issuer=label.slice(0,label.indexOf(':')).trim();
+      label=label.slice(label.indexOf(':')+1).trim();
+    }
+    const digits=q.has('digits')?parseInt(q.get('digits'),10):6;
+    if(!(digits>=6&&digits<=8)) throw new Error('digits must be 6, 7, or 8');
+    const period=q.has('period')?parseInt(q.get('period'),10):30;
+    if(!(period>=5&&period<=300)) throw new Error('period out of range (5–300 s)');
+    const alg={SHA1:'SHA-1',SHA256:'SHA-256',SHA512:'SHA-512'}[(q.get('algorithm')||'SHA1').toUpperCase().replace(/[^A-Z0-9]/g,'')];
+    if(!alg) throw new Error('Unsupported algorithm "'+q.get('algorithm')+'" (use SHA1, SHA256 or SHA512)');
+    return {label, issuer, secret, digits, period, algorithm:alg};
+  }
+
+  function parseInput(raw){
+    const s=raw.trim();
+    if(!s) throw new Error('Paste a base32 secret or an otpauth:// URI first.');
+    if(/^otpauth:/i.test(s)) return parseOtpauth(s);
+    return {label:'', issuer:'', secret:s, digits:6, period:30, algorithm:'SHA-1'};
+  }
+
+  // ── entries & live ticking (memory only) ──
+
+  const entries=[];       // {id,label,issuer,digits,period,algorithm,key,counter,el,refs}
+  let nextId=1;
+
+  const entriesEl=document.getElementById('entries');
+  const emptyEl=document.getElementById('emptyState');
+  const countEl=document.getElementById('entryCount');
+  const inputEl=document.getElementById('secretInput');
+  const errEl=document.getElementById('addError');
+
+  function setError(msg){ errEl.textContent=msg||''; errEl.classList.toggle('show', !!msg); }
+
+  function groupCode(code){ // 123456 → "123 456", 12345678 → "1234 5678"
+    const mid=Math.ceil(code.length/2);
+    return code.slice(0,mid)+' '+code.slice(mid);
+  }
+
+  const RING_C=2*Math.PI*26; // r=26 circle circumference
+
+  function buildEntryEl(e){
+    const div=document.createElement('div');
+    div.className='entry';
+    const title=e.issuer||e.label||'Secret #'+e.id;
+    const sub=e.issuer?(e.label||' '):' ';
+    div.innerHTML=
+      '<svg class="entry-ring" viewBox="0 0 60 60" aria-hidden="true">'+
+        '<circle class="track" cx="30" cy="30" r="26"></circle>'+
+        '<circle class="arc" cx="30" cy="30" r="26" stroke-dasharray="'+RING_C.toFixed(2)+'"></circle>'+
+        '<text x="30" y="35" text-anchor="middle" class="secs"></text>'+
+      '</svg>'+
+      '<div class="entry-info">'+
+        '<div class="entry-issuer">'+escapeHtml(title)+'</div>'+
+        '<div class="entry-label">'+escapeHtml(sub)+'</div>'+
+        '<div class="entry-code" title="Click to copy">••• •••</div>'+
+        '<div class="entry-next" title="Click to copy the next code">next <b>…</b></div>'+
+        '<div class="entry-meta">'+escapeHtml(e.algorithm+' · '+e.digits+' digits · '+e.period+' s')+'</div>'+
+      '</div>'+
+      '<button class="tool-btn entry-remove">Remove</button>';
+    e.refs={
+      arc: div.querySelector('.arc'),
+      secs: div.querySelector('.secs'),
+      code: div.querySelector('.entry-code'),
+      next: div.querySelector('.entry-next b'),
+    };
+    e.refs.code.addEventListener('click', ()=>{ if(e.code) copyText(e.code,'Current code copied'); });
+    div.querySelector('.entry-next').addEventListener('click', ()=>{ if(e.next) copyText(e.next,'Next code copied'); });
+    div.querySelector('.entry-remove').addEventListener('click', ()=>removeEntry(e.id));
+    return div;
+  }
+
+  function removeEntry(id){
+    const i=entries.findIndex(e=>e.id===id);
+    if(i<0) return;
+    entries[i].el.remove();
+    entries.splice(i,1);
+    updateEmpty();
+  }
+
+  function updateEmpty(){
+    emptyEl.style.display=entries.length?'none':'';
+    countEl.textContent=entries.length?entries.length+(entries.length===1?' entry':' entries'):'';
+  }
+
+  async function addEntry(raw){
+    if(!(window.crypto&&crypto.subtle)) throw new Error('WebCrypto unavailable — open this page via file:// or https/localhost.');
+    const p=parseInput(raw);
+    const keyBytes=b32decode(p.secret);
+    const key=await importTotpKey(keyBytes, p.algorithm);
+    const e={id:nextId++, label:p.label, issuer:p.issuer, digits:p.digits, period:p.period,
+             algorithm:p.algorithm, key, counter:-1, code:'', next:''};
+    e.el=buildEntryEl(e);
+    entriesEl.appendChild(e.el);
+    entries.push(e);
+    updateEmpty();
+    await tick();
+  }
+
+  async function tick(){
+    const now=Math.floor(Date.now()/1000);
+    for(const e of entries){
+      const counter=Math.floor(now/e.period);
+      if(counter!==e.counter){ // period boundary (or first paint): recompute both codes
+        e.counter=counter;
+        try{
+          e.code=await totpAt(e.key, counter, e.digits);
+          e.next=await totpAt(e.key, counter+1, e.digits);
+        }catch(err){ e.code=e.next=''; e.refs.code.textContent='error'; continue; }
+        e.refs.code.textContent=groupCode(e.code);
+        e.refs.next.textContent=groupCode(e.next);
+      }
+      const remain=e.period-(now%e.period);
+      e.refs.secs.textContent=remain;
+      e.refs.arc.style.strokeDashoffset=(RING_C*(1-remain/e.period)).toFixed(2);
+      e.refs.arc.classList.toggle('low', remain<=5);
+    }
+  }
+  setInterval(tick, 500); // recomputes only when the counter rolls; otherwise just the countdown
+
+  // ── clipboard ──
+
+  function copyText(text,msg){
+    const done=()=>showToast(msg||'Copied');
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, ()=>fallbackCopy(text,done));
+    } else fallbackCopy(text,done);
+  }
+  function fallbackCopy(text,done){
+    const ta=document.createElement('textarea');
+    ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); done(); }catch(e){ showToast('Copy failed — select the code manually'); }
+    ta.remove();
+  }
+
+  // ── wiring ──
+
+  async function onAdd(){
+    try{
+      await addEntry(inputEl.value);
+      setError('');
+      inputEl.value='';
+      inputEl.focus();
+    }catch(err){ setError(err.message||String(err)); }
+  }
+  document.getElementById('addBtn').addEventListener('click', onAdd);
+  inputEl.addEventListener('keydown', ev=>{ if(ev.key==='Enter') onAdd(); });
+  inputEl.addEventListener('input', ()=>setError(''));
+
+  // JBSWY3DPEHPK3PXP is the well-known secret used across TOTP documentation and demos.
+  document.getElementById('demoBtn').addEventListener('click', async ()=>{
+    try{
+      await addEntry('otpauth://totp/Toolshed:demo?secret=JBSWY3DPEHPK3PXP&issuer=Toolshed%20Demo');
+      setError('');
+      showToast('Demo secret loaded — documentation key, not a real account');
+    }catch(err){ setError(err.message||String(err)); }
+  });
+
+  updateEmpty();
+  if(!(window.crypto&&crypto.subtle)){
+    setError('WebCrypto (crypto.subtle) is unavailable in this context. Serve the page over https or localhost, or open it directly via file://.');
+  }
+</script>
+</body>
+</html>

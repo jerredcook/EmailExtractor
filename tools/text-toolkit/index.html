@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Toolkit</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Text Toolkit specific ── */
+  #input, #output { min-height: 170px; }
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin-top: 12px;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .stats b { color: var(--accent2); font-weight: 700; margin-right: 5px; }
+  .op-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ps-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border);
+  }
+  .ps-row input { flex: 1 1 130px; padding: 9px 12px; font-size: 12px; }
+  .ps-row .tool-btn { flex: 0 0 auto; }
+  .last-op { color: var(--accent2); text-transform: none; letter-spacing: 0; font-size: 12px; }
+  .out-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>Text<span>Toolkit</span></h1>
+  <p class="subtitle">Case conversion, line sorting, dedupe, escaping, slugs, and counts &mdash; every little text chore in one local page.</p>
+</header>
+
+<div class="main">
+
+  <div class="card">
+    <div class="card-header">
+      <span>Input</span>
+      <button class="tool-btn" id="clearBtn">Clear</button>
+    </div>
+    <div class="card-body">
+      <textarea id="input" rows="8" placeholder="Paste or type text here&hellip;" spellcheck="false" autofocus></textarea>
+      <div class="stats">
+        <span title="Unicode code points"><b id="stChars">0</b>chars</span>
+        <span><b id="stWords">0</b>words</span>
+        <span><b id="stLines">0</b>lines</span>
+        <span title="UTF-8 encoded size"><b id="stBytes">0</b>bytes</span>
+        <span title="Case-insensitive"><b id="stUnique">0</b>unique words</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Case</span></div>
+    <div class="card-body op-grid">
+      <button class="tool-btn" data-op="upper">UPPERCASE</button>
+      <button class="tool-btn" data-op="lower">lowercase</button>
+      <button class="tool-btn" data-op="titlecase" title="Minor words (of, the, and&hellip;) stay lowercase">Title Case</button>
+      <button class="tool-btn" data-op="sentence">Sentence case</button>
+      <button class="tool-btn" data-op="camel" title="Splits on spaces, punctuation and camel boundaries; applies per line">camelCase</button>
+      <button class="tool-btn" data-op="pascal" title="Splits on spaces, punctuation and camel boundaries; applies per line">PascalCase</button>
+      <button class="tool-btn" data-op="snake" title="Splits on spaces, punctuation and camel boundaries; applies per line">snake_case</button>
+      <button class="tool-btn" data-op="kebab" title="Splits on spaces, punctuation and camel boundaries; applies per line">kebab-case</button>
+      <button class="tool-btn" data-op="constant" title="Splits on spaces, punctuation and camel boundaries; applies per line">CONSTANT_CASE</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Lines</span></div>
+    <div class="card-body">
+      <div class="op-grid">
+        <button class="tool-btn" data-op="sortAsc">Sort A&rarr;Z</button>
+        <button class="tool-btn" data-op="sortDesc">Sort Z&rarr;A</button>
+        <button class="tool-btn" data-op="sortNat" title="Numeric-aware: item2 before item10">Natural sort</button>
+        <button class="tool-btn" data-op="reverseLines">Reverse order</button>
+        <button class="tool-btn" data-op="shuffle" title="Fisher-Yates with crypto randomness">Shuffle</button>
+        <button class="tool-btn" data-op="dedupe" title="Keeps first occurrence, case-sensitive">Remove duplicates</button>
+        <button class="tool-btn" data-op="dedupeCI" title="Keeps first occurrence, ignores case">Dedupe (ignore case)</button>
+        <button class="tool-btn" data-op="noBlank">Remove blank lines</button>
+        <button class="tool-btn" data-op="trimLines">Trim each line</button>
+        <button class="tool-btn" data-op="numberLines" title="Prepends 1. 2. 3.">Number lines</button>
+      </div>
+      <div class="ps-row">
+        <input type="text" id="prefixIn" placeholder="prefix" aria-label="Prefix for each line">
+        <input type="text" id="suffixIn" placeholder="suffix" aria-label="Suffix for each line">
+        <button class="tool-btn" data-op="prefixSuffix">Add prefix / suffix</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Escape / Encode</span></div>
+    <div class="card-body op-grid">
+      <button class="tool-btn" data-op="htmlEsc" title="&amp; &lt; &gt; &quot; ' &rarr; entities">HTML escape</button>
+      <button class="tool-btn" data-op="htmlUnesc" title="Named + numeric (&amp;#NNN; / &amp;#xHH;) entities">HTML unescape</button>
+      <button class="tool-btn" data-op="urlEnc" title="encodeURIComponent">URL encode</button>
+      <button class="tool-btn" data-op="urlDec" title="decodeURIComponent">URL decode</button>
+      <button class="tool-btn" data-op="jsonEsc" title="Escapes for use inside a JSON string literal">JSON escape</button>
+      <button class="tool-btn" data-op="jsonUnesc" title="Accepts quoted or bare escaped strings">JSON unescape</button>
+      <button class="tool-btn" data-op="stripTags" title="Regex-based; approximate for unusual markup">Strip HTML tags</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Transform</span></div>
+    <div class="card-body op-grid">
+      <button class="tool-btn" data-op="slug" title="Lowercase, strip diacritics, hyphenate; applies per line">Slugify</button>
+      <button class="tool-btn" data-op="reverseText" title="Code-point safe: emoji survive">Reverse text</button>
+      <button class="tool-btn" data-op="collapseWs" title="Collapse runs to one space, trim each line">Collapse whitespace</button>
+      <button class="tool-btn" data-op="stripWs">Remove all whitespace</button>
+      <button class="tool-btn" data-op="uniqWords" title="Lowercased, sorted, one per line">Unique words</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>Output</span>
+      <span class="last-op" id="lastOp">no operation yet</span>
+    </div>
+    <div class="card-body">
+      <textarea id="output" rows="8" readonly placeholder="Result appears here&hellip;" spellcheck="false"></textarea>
+      <div class="out-actions">
+        <button class="btn-primary" id="copyBtn">Copy</button>
+        <button class="btn-secondary" id="downloadBtn">Download .txt</button>
+        <button class="btn-secondary" id="useBtn" title="Move the result back into the input for chaining ops">Use as input</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  const $ = id => document.getElementById(id);
+  const ENC = new TextEncoder();
+  // word = letters/digits, allowing internal apostrophes and hyphens (don't, well-known)
+  const WORD_RE = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
+
+  function getLines(s){ return s.split(/\r\n|\r|\n/); }
+  function mapLines(s, fn){ return getLines(s).map(fn).join('\n'); }
+  function cap(t){ return t.replace(/^./u, c => c.toUpperCase()); }
+
+  // split into tokens on whitespace/punct/_/- AND camel boundaries:
+  // "fooBarBaz" and "foo-bar baz" both -> [foo,bar,baz]; "XMLHttpRequest" -> [XML,Http,Request]
+  function splitTokens(s){
+    return s
+      .replace(/([\p{Ll}\p{N}])(\p{Lu})/gu, '$1 $2')
+      .replace(/(\p{Lu}+)(\p{Lu}\p{Ll})/gu, '$1 $2')
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter(Boolean);
+  }
+  function programCase(s, join){ return mapLines(s, l => join(splitTokens(l))); }
+
+  const MINOR = new Set(['a','an','the','and','but','or','nor','for','so','yet','as','at','by','in','of','off','on','per','to','up','via','with']);
+  function titleCaseLine(line){
+    let first = true;
+    return line.replace(WORD_RE, w => {
+      const lower = w.toLowerCase();
+      const keepMinor = !first && MINOR.has(lower);
+      first = false;
+      return keepMinor ? lower : cap(lower);
+    });
+  }
+
+  function sentenceCase(s){
+    return s.toLowerCase().replace(/(^\s*|[.!?]\s+|\n\s*)(\p{L})/gu, (m, pre, c) => pre + c.toUpperCase());
+  }
+
+  const NAMED_ENTITIES = {
+    amp:'&', lt:'<', gt:'>', quot:'"', apos:"'",
+    nbsp:'\u00a0', copy:'©', reg:'®', trade:'™', hellip:'…',
+    mdash:'—', ndash:'–', lsquo:'‘', rsquo:'’', ldquo:'“', rdquo:'”',
+    bull:'•', middot:'·', deg:'°', laquo:'«', raquo:'»',
+    euro:'€', pound:'£', yen:'¥', cent:'¢', sect:'§', para:'¶',
+    plusmn:'±', times:'×', divide:'÷'
+  };
+  function htmlUnescape(s){
+    return s.replace(/&(?:#(\d+)|#[xX]([0-9a-fA-F]+)|([a-zA-Z][a-zA-Z0-9]*));/g, (m, dec, hex, name) => {
+      if (dec !== undefined || hex !== undefined){
+        const cp = dec !== undefined ? parseInt(dec, 10) : parseInt(hex, 16);
+        try { return String.fromCodePoint(cp); } catch (e) { return m; }
+      }
+      return Object.prototype.hasOwnProperty.call(NAMED_ENTITIES, name) ? NAMED_ENTITIES[name] : m;
+    });
+  }
+
+  function jsonEscape(s){ return JSON.stringify(s).slice(1, -1); }
+  function jsonUnescape(s){
+    let t = s.trim();
+    if (!(t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"')) t = '"' + t + '"';
+    let v;
+    try { v = JSON.parse(t); } catch (e) { throw new Error('not a valid JSON string'); }
+    if (typeof v !== 'string') throw new Error('not a valid JSON string');
+    return v;
+  }
+
+  function slugLine(l){
+    return l.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function uniqueWords(s){
+    const words = s.match(WORD_RE);
+    if (!words) throw new Error('no words found');
+    return Array.from(new Set(words.map(w => w.toLowerCase())))
+      .sort((a, b) => a.localeCompare(b)).join('\n');
+  }
+
+  function randInt(n){ // uniform integer in [0, n) via rejection sampling
+    const buf = new Uint32Array(1);
+    const limit = 4294967296 - (4294967296 % n);
+    do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+    return buf[0] % n;
+  }
+  function shuffleLines(s){
+    const a = getLines(s);
+    for (let i = a.length - 1; i > 0; i--){
+      const j = randInt(i + 1);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a.join('\n');
+  }
+
+  function dedupe(s, foldCase){
+    const seen = new Set(), out = [];
+    for (const l of getLines(s)){
+      const k = foldCase ? l.toLowerCase() : l;
+      if (!seen.has(k)){ seen.add(k); out.push(l); }
+    }
+    return out.join('\n');
+  }
+
+  // — operation registry: key -> [display name, input -> output] —
+  const OPS = {
+    upper:        ['UPPERCASE',        s => s.toUpperCase()],
+    lower:        ['lowercase',        s => s.toLowerCase()],
+    titlecase:    ['Title Case',       s => mapLines(s, titleCaseLine)],
+    sentence:     ['Sentence case',    sentenceCase],
+    camel:        ['camelCase',        s => programCase(s, t => t.map((w, i) => i ? cap(w.toLowerCase()) : w.toLowerCase()).join(''))],
+    pascal:       ['PascalCase',       s => programCase(s, t => t.map(w => cap(w.toLowerCase())).join(''))],
+    snake:        ['snake_case',       s => programCase(s, t => t.map(w => w.toLowerCase()).join('_'))],
+    kebab:        ['kebab-case',       s => programCase(s, t => t.map(w => w.toLowerCase()).join('-'))],
+    constant:     ['CONSTANT_CASE',    s => programCase(s, t => t.map(w => w.toUpperCase()).join('_'))],
+
+    sortAsc:      ['Sort A→Z',    s => getLines(s).sort((a, b) => a.localeCompare(b)).join('\n')],
+    sortDesc:     ['Sort Z→A',    s => getLines(s).sort((a, b) => b.localeCompare(a)).join('\n')],
+    sortNat:      ['Natural sort',     s => getLines(s).sort((a, b) => a.localeCompare(b, undefined, {numeric:true})).join('\n')],
+    reverseLines: ['Reverse order',    s => getLines(s).reverse().join('\n')],
+    shuffle:      ['Shuffle',          shuffleLines],
+    dedupe:       ['Remove duplicates', s => dedupe(s, false)],
+    dedupeCI:     ['Dedupe (ignore case)', s => dedupe(s, true)],
+    noBlank:      ['Remove blank lines', s => getLines(s).filter(l => l.trim() !== '').join('\n')],
+    trimLines:    ['Trim each line',   s => mapLines(s, l => l.trim())],
+    numberLines:  ['Number lines',     s => getLines(s).map((l, i) => (i + 1) + '. ' + l).join('\n')],
+    prefixSuffix: ['Prefix / suffix',  s => {
+                    const p = $('prefixIn').value, q = $('suffixIn').value;
+                    if (!p && !q) throw new Error('set a prefix and/or suffix first');
+                    return mapLines(s, l => p + l + q);
+                  }],
+
+    htmlEsc:      ['HTML escape',      s => escapeHtml(s)],
+    htmlUnesc:    ['HTML unescape',    htmlUnescape],
+    urlEnc:       ['URL encode',       s => encodeURIComponent(s)],
+    urlDec:       ['URL decode',       s => {
+                    try { return decodeURIComponent(s); }
+                    catch (e) { throw new Error('malformed percent-encoding'); }
+                  }],
+    jsonEsc:      ['JSON escape',      jsonEscape],
+    jsonUnesc:    ['JSON unescape',    jsonUnescape],
+    stripTags:    ['Strip HTML tags',  s => s.replace(/<[^>]*>/g, '')],
+
+    slug:         ['Slugify',          s => mapLines(s, slugLine)],
+    reverseText:  ['Reverse text',     s => Array.from(s).reverse().join('')],
+    collapseWs:   ['Collapse whitespace', s => mapLines(s, l => l.replace(/\s+/g, ' ').trim())],
+    stripWs:      ['Remove all whitespace', s => s.replace(/\s+/g, '')],
+    uniqWords:    ['Unique words',     uniqueWords]
+  };
+
+  const input = $('input'), output = $('output'), lastOp = $('lastOp');
+
+  function runOp(key){
+    const op = OPS[key];
+    if (!op) return;
+    const src = input.value;
+    if (src === ''){ showToast('Input is empty — paste some text first'); return; }
+    let result;
+    try { result = op[1](src); }
+    catch (e) { showToast(op[0] + ': ' + ((e && e.message) || 'failed')); return; }
+    output.value = result;
+    lastOp.textContent = op[0];
+  }
+  document.querySelectorAll('[data-op]').forEach(b => b.addEventListener('click', () => runOp(b.dataset.op)));
+
+  // — live stats —
+  const fmt = n => n.toLocaleString();
+  function updateStats(){
+    const s = input.value;
+    const pairs = s.match(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g);          // surrogate pairs
+    $('stChars').textContent = fmt(s.length - (pairs ? pairs.length : 0)); // code points
+    const words = s.match(WORD_RE) || [];
+    $('stWords').textContent = fmt(words.length);
+    $('stLines').textContent = fmt(s === '' ? 0 : getLines(s).length);
+    $('stBytes').textContent = fmt(ENC.encode(s).length);
+    $('stUnique').textContent = fmt(new Set(words.map(w => w.toLowerCase())).size);
+  }
+  let statsTimer;
+  input.addEventListener('input', () => { clearTimeout(statsTimer); statsTimer = setTimeout(updateStats, 120); });
+
+  // — output actions —
+  $('copyBtn').addEventListener('click', async () => {
+    if (!output.value){ showToast('Nothing to copy yet'); return; }
+    try { await navigator.clipboard.writeText(output.value); showToast('Copied to clipboard'); }
+    catch (e) {
+      output.focus(); output.select();
+      const ok = document.execCommand && document.execCommand('copy');
+      showToast(ok ? 'Copied to clipboard' : 'Copy failed — select and copy manually');
+    }
+  });
+  $('downloadBtn').addEventListener('click', () => {
+    if (!output.value){ showToast('Nothing to download yet'); return; }
+    download(output.value, 'text-toolkit.txt', 'text/plain');
+  });
+  $('useBtn').addEventListener('click', () => {
+    if (!output.value){ showToast('Nothing to move yet'); return; }
+    input.value = output.value;
+    updateStats();
+    showToast('Output moved to input');
+  });
+  $('clearBtn').addEventListener('click', () => { input.value = ''; updateStats(); input.focus(); });
+
+  updateStats();
+</script>
+</body>
+</html>

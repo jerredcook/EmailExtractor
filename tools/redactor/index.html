@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redactor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Redactor-specific ── */
+  .hidden { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .controls .spacer { flex: 1; }
+  .controls select { width: auto; padding: 9px 12px; font-size: 12px; }
+  .controls select:disabled { opacity: .4; cursor: not-allowed; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .seg .tool-btn { border: none; border-radius: 0; }
+  .seg .tool-btn + .tool-btn { border-left: 1px solid var(--border); }
+  .seg .tool-btn.active { background: var(--accent); color: var(--bg); }
+  .seg .tool-btn.active:hover { color: var(--bg); }
+  .tool-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .tool-btn:disabled:hover { color: var(--muted); border-color: var(--border); }
+
+  .canvas-wrap {
+    position: relative;
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #0a0a0a;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .canvas-wrap canvas { display: block; width: 100%; height: auto; }
+  #work { cursor: crosshair; touch-action: none; }
+  #overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  .img-info { font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--muted); text-align: right; }
+
+  .note { margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .note strong { color: var(--text); }
+  .note.warn { border-left: 2px solid var(--danger); padding-left: 12px; }
+
+  .export-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .export-row select { width: auto; padding: 12px 14px; }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>Redact<span>or</span></h1>
+  <p class="subtitle">Black out or pixelate the sensitive parts of a screenshot or document photo &mdash; the pixels are destroyed, not covered, and the image never leaves your browser.</p>
+</header>
+
+<div class="main">
+
+  <div class="card">
+    <div class="card-header"><div><span class="step">1</span>Load an image</div></div>
+    <div class="card-body">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" aria-label="Choose an image">
+        <div class="drop-icon">&#9635;</div>
+        <div class="drop-text"><strong>Drop an image here</strong> or click to browse<br>JPEG, PNG or WebP &mdash; processed entirely in this tab</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="editorCard">
+    <div class="card-header">
+      <div><span class="step">2</span>Drag rectangles to redact</div>
+      <div class="img-info" id="imgInfo"></div>
+    </div>
+    <div class="card-body">
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Redaction mode">
+          <button type="button" class="tool-btn active" id="modeBlack" aria-pressed="true">Black box</button>
+          <button type="button" class="tool-btn" id="modePix" aria-pressed="false">Pixelate</button>
+        </div>
+        <select id="blockSel" aria-label="Pixelate block size" disabled title="Pixelate block size">
+          <option value="32">Coarse (32px)</option>
+          <option value="16" selected>Medium (16px)</option>
+          <option value="8">Fine (8px)</option>
+        </select>
+        <div class="spacer"></div>
+        <button type="button" class="tool-btn" id="undoBtn" disabled>Undo</button>
+        <button type="button" class="tool-btn" id="resetBtn">Reset to original</button>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="work"></canvas>
+        <canvas id="overlay"></canvas>
+      </div>
+      <p class="note warn"><strong>Redactions are irreversible by design.</strong> Each committed rectangle overwrites the image pixels &mdash; the data is destroyed, not covered by a layer, so it cannot be undone by an attacker <strong>or by you</strong>. Undo only replays the last 10 steps of this session from in-memory snapshots; the exported file always contains only the baked pixels.</p>
+    </div>
+  </div>
+
+  <div class="card hidden" id="exportCard">
+    <div class="card-header"><div><span class="step">3</span>Download</div></div>
+    <div class="card-body">
+      <div class="export-row">
+        <select id="fmtSel" aria-label="Export format">
+          <option value="png" selected>PNG (lossless)</option>
+          <option value="jpg">JPEG (quality 0.92)</option>
+        </select>
+        <button type="button" class="btn-primary" id="dlBtn">Download redacted image</button>
+      </div>
+      <p class="note">The image is re-encoded from the canvas, which also <strong>strips all EXIF/GPS metadata</strong> as a side effect.</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  const MAX_SIDE = 8000;      // cap for the working canvas (longest side)
+  const MAX_HISTORY = 10;     // undo depth (region pixel snapshots)
+
+  const dropZone   = document.getElementById('dropZone');
+  const fileInput  = document.getElementById('fileInput');
+  const editorCard = document.getElementById('editorCard');
+  const exportCard = document.getElementById('exportCard');
+  const imgInfo    = document.getElementById('imgInfo');
+  const work       = document.getElementById('work');
+  const overlay    = document.getElementById('overlay');
+  const modeBlack  = document.getElementById('modeBlack');
+  const modePix    = document.getElementById('modePix');
+  const blockSel   = document.getElementById('blockSel');
+  const undoBtn    = document.getElementById('undoBtn');
+  const resetBtn   = document.getElementById('resetBtn');
+  const fmtSel     = document.getElementById('fmtSel');
+  const dlBtn      = document.getElementById('dlBtn');
+
+  const ctx  = work.getContext('2d', { willReadFrequently: true });
+  const octx = overlay.getContext('2d');
+
+  let srcImg = null;       // decoded original, kept for Reset
+  let baseName = 'image';
+  let mode = 'black';      // 'black' | 'pix'
+  let history = [];        // [{x, y, data:ImageData}] — pixel snapshots of redacted regions
+  let drag = null;         // in-progress marquee, native coords {x0,y0,x1,y1}
+
+  // ── loading ──
+
+  function loadFile(file){
+    if (!file) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+      showToast('Not a supported image (JPEG, PNG or WebP)');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      srcImg = img;
+      baseName = file.name.replace(/\.[^.]+$/, '') || 'image';
+      setupCanvas();
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      showToast('Could not decode that image');
+    };
+    img.src = url;
+  }
+
+  function setupCanvas(){
+    let w = srcImg.naturalWidth, h = srcImg.naturalHeight;
+    if (!w || !h) { showToast('Image has no pixels'); return; }
+    const longest = Math.max(w, h);
+    const capped = longest > MAX_SIDE;
+    if (capped) {
+      const s = MAX_SIDE / longest;
+      w = Math.max(1, Math.round(w * s));
+      h = Math.max(1, Math.round(h * s));
+    }
+    work.width = w;  work.height = h;
+    overlay.width = w; overlay.height = h;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(srcImg, 0, 0, w, h);
+    octx.clearRect(0, 0, w, h);
+    history = [];
+    drag = null;
+    updateButtons();
+    // textContent — no HTML injection possible
+    imgInfo.textContent = baseName + ' — ' + w + '×' + h + 'px' +
+      (capped ? ' (downscaled from ' + srcImg.naturalWidth + '×' + srcImg.naturalHeight + ' to fit the 8000px cap)' : '');
+    editorCard.classList.remove('hidden');
+    exportCard.classList.remove('hidden');
+    if (capped) showToast('Large image downscaled to ' + w + '×' + h);
+  }
+
+  fileInput.addEventListener('change', () => { loadFile(fileInput.files[0]); fileInput.value = ''; });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f); else showToast('That drop had no file in it');
+  });
+
+  // ── coordinate mapping: displayed (CSS-scaled) canvas → native pixels ──
+
+  function toNative(e){
+    const r = work.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (work.width  / r.width);
+    const y = (e.clientY - r.top)  * (work.height / r.height);
+    return [
+      Math.max(0, Math.min(work.width,  x)),
+      Math.max(0, Math.min(work.height, y))
+    ];
+  }
+
+  function dragRect(){
+    const x = Math.round(Math.min(drag.x0, drag.x1));
+    const y = Math.round(Math.min(drag.y0, drag.y1));
+    const w = Math.min(Math.round(Math.abs(drag.x1 - drag.x0)), work.width  - x);
+    const h = Math.min(Math.round(Math.abs(drag.y1 - drag.y0)), work.height - y);
+    return { x, y, w, h };
+  }
+
+  // ── marquee (overlay only — committed redactions live in the work canvas pixels) ──
+
+  function drawMarquee(){
+    octx.clearRect(0, 0, overlay.width, overlay.height);
+    if (!drag) return;
+    const r = dragRect();
+    if (r.w < 1 || r.h < 1) return;
+    // scale line weight so it reads ~1.5 CSS px regardless of native resolution
+    const s = work.width / work.getBoundingClientRect().width;
+    octx.lineWidth = Math.max(1, 1.5 * s);
+    octx.setLineDash([6 * s, 4 * s]);
+    octx.strokeStyle = '#e8ff47';
+    octx.fillStyle = 'rgba(232,255,71,0.12)';
+    octx.fillRect(r.x, r.y, r.w, r.h);
+    octx.strokeRect(r.x, r.y, r.w, r.h);
+  }
+
+  work.addEventListener('pointerdown', e => {
+    if (!srcImg) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    work.setPointerCapture(e.pointerId);
+    const [x, y] = toNative(e);
+    drag = { x0: x, y0: y, x1: x, y1: y };
+    drawMarquee();
+  });
+
+  work.addEventListener('pointermove', e => {
+    if (!drag) return;
+    [drag.x1, drag.y1] = toNative(e);
+    drawMarquee();
+  });
+
+  work.addEventListener('pointerup', e => {
+    if (!drag) return;
+    [drag.x1, drag.y1] = toNative(e);
+    const r = dragRect();
+    drag = null;
+    octx.clearRect(0, 0, overlay.width, overlay.height);
+    if (r.w >= 3 && r.h >= 3) commit(r);
+  });
+
+  work.addEventListener('pointercancel', () => {
+    drag = null;
+    octx.clearRect(0, 0, overlay.width, overlay.height);
+  });
+
+  // ── commit: bake the redaction into the work canvas PIXELS ──
+
+  function commit(r){
+    // snapshot the region's current pixels for session undo, then destroy them
+    history.push({ x: r.x, y: r.y, data: ctx.getImageData(r.x, r.y, r.w, r.h) });
+    if (history.length > MAX_HISTORY) history.shift();
+
+    if (mode === 'black') {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+    } else {
+      // resample: region → tiny canvas → back up, so the original data is gone
+      const block = parseInt(blockSel.value, 10);
+      const tw = Math.max(1, Math.round(r.w / block));
+      const th = Math.max(1, Math.round(r.h / block));
+      const tiny = document.createElement('canvas');
+      tiny.width = tw; tiny.height = th;
+      const tctx = tiny.getContext('2d');
+      tctx.imageSmoothingEnabled = false;
+      tctx.drawImage(work, r.x, r.y, r.w, r.h, 0, 0, tw, th);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(tiny, 0, 0, tw, th, r.x, r.y, r.w, r.h);
+      ctx.imageSmoothingEnabled = true;
+    }
+    updateButtons();
+  }
+
+  // ── undo / reset ──
+
+  function undo(){
+    const s = history.pop();
+    if (!s) { showToast('Nothing to undo'); return; }
+    ctx.putImageData(s.data, s.x, s.y);
+    updateButtons();
+  }
+
+  function reset(){
+    if (!srcImg) return;
+    setupCanvas();
+    showToast('Restored original');
+  }
+
+  function updateButtons(){
+    undoBtn.disabled = history.length === 0;
+    undoBtn.textContent = history.length ? 'Undo (' + history.length + ')' : 'Undo';
+  }
+
+  undoBtn.addEventListener('click', undo);
+  resetBtn.addEventListener('click', reset);
+
+  function setMode(m){
+    mode = m;
+    modeBlack.classList.toggle('active', m === 'black');
+    modePix.classList.toggle('active', m === 'pix');
+    modeBlack.setAttribute('aria-pressed', m === 'black');
+    modePix.setAttribute('aria-pressed', m === 'pix');
+    blockSel.disabled = m !== 'pix';
+  }
+  modeBlack.addEventListener('click', () => setMode('black'));
+  modePix.addEventListener('click', () => setMode('pix'));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && drag) {
+      drag = null;
+      octx.clearRect(0, 0, overlay.width, overlay.height);
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && srcImg) {
+      e.preventDefault();
+      undo();
+    }
+  });
+
+  // ── export ──
+
+  dlBtn.addEventListener('click', () => {
+    if (!srcImg) { showToast('Load an image first'); return; }
+    const fmt = fmtSel.value;
+    const mime = fmt === 'jpg' ? 'image/jpeg' : 'image/png';
+    let src = work;
+    if (fmt === 'jpg') {
+      // JPEG has no alpha — flatten any transparency onto white, not black
+      const flat = document.createElement('canvas');
+      flat.width = work.width; flat.height = work.height;
+      const fc = flat.getContext('2d');
+      fc.fillStyle = '#fff';
+      fc.fillRect(0, 0, flat.width, flat.height);
+      fc.drawImage(work, 0, 0);
+      src = flat;
+    }
+    src.toBlob(blob => {
+      if (!blob) { showToast('Export failed'); return; }
+      const name = baseName + '-redacted.' + (fmt === 'jpg' ? 'jpg' : 'png');
+      download(blob, name, mime);
+      showToast('Saved ' + name);
+    }, mime, 0.92);
+  });
+</script>
+</body>
+</html>
