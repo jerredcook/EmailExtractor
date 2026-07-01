@@ -60,4 +60,10 @@ After any change to the chunking logic: `npm run build && npm test`.
 
 Prefer editing existing files over adding new ones. Don't introduce dependencies or a build toolchain without a clear reason — the no-deps, no-bundler property is a feature. Match the existing terse, comment-light-but-not-absent style.
 
-**One deliberate exception:** `tools/pdf-tools/index.html` vendors `pdf-lib` (MIT) **inlined** into the page (PDF merge/split/rotate has no reasonable pure-JS alternative). It's isolated in a single marked `<script>` block — don't hand-edit that blob; re-vendor from the pinned version if it must change. The page is still self-contained and works offline; this is not a license to add a build step or pull libraries from a CDN.
+**Two deliberate dependency exceptions** (both vendored locally — no CDN, no build step, no npm at runtime):
+
+1. `tools/pdf-tools/index.html` vendors `pdf-lib` (MIT) **inlined** into the page in a single marked `<script>` block (PDF merge/split/rotate has no reasonable pure-JS alternative). Don't hand-edit that blob; re-vendor from the pinned version if it must change. The page is still self-contained and works offline via `file://`.
+
+2. `tools/media-converter/` vendors `ffmpeg.wasm` (FFmpeg, LGPL/GPL) as local files under `tools/media-converter/vendor/` — the two small UMD shims (`ffmpeg.js`, `util.js`), the worker chunk (`814.ffmpeg.js`), and the **single-threaded ESM core** (`ffmpeg-core.js` + a ~30 MB `ffmpeg-core.wasm`). Loaded via relative `<script src>` + `toBlobURL`. Notes: the **ESM** core is required (the UMD core fails with the forced module-worker); the **single-threaded** core avoids `SharedArrayBuffer`, so it needs no COOP/COEP headers (which GitHub Pages can't set); use **VP8** for WebM (VP9 aborts in this core). This is the **one tool that does NOT work via `file://`** — the module worker needs an http(s) origin, so it must be served (the page detects `file://` and says so). If a conversion aborts, the tool rebuilds the engine (an aborted wasm instance is dead).
+
+Neither is a license to add a build step or pull libraries from a CDN in any other tool — the no-deps, self-contained-page property is still the default.
