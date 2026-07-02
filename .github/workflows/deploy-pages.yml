@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
 # Replaces the legacy "deploy from a branch" builder with an explicit,
-# concurrency-controlled deployment so rapid pushes can't collide (the cause
-# of the intermittent "Deployment failed, try again later" errors).
+# concurrency-controlled deployment. Publishing a clean, minimal artifact
+# (only the real site — index.html + tools/, never the repo's .git or docs)
+# avoids the Pages-backend failures the full-checkout upload was hitting.
 
 on:
   push:
@@ -29,12 +30,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Assemble site (site files only — no .git, no repo docs)
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp -R tools _site/tools
+          touch _site/.nojekyll
+          echo "Published files:" && find _site -maxdepth 2 -type f | head -40
+          echo "Total size:" && du -sh _site | cut -f1
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: . # whole repo root is the static site
+          path: _site
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
