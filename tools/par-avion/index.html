@@ -455,7 +455,7 @@ $('#btn-generate').onclick = async () => {
       `<div class="pnum">PART ${padPart(i+1)} / ${padPart(total)}</div>`+
       `<div class="psize">${humanSize(end-start)}</div>`+
       `<div class="phash">sha256 ${hash.slice(0,16)}…</div>`+
-      `<a class="dl" href="${url}" download="${emlName}">Download draft</a>`;
+      `<a class="dl" href="${url}" download="${escapeHtml(emlName)}">Download draft</a>`;
     strip.appendChild(card);
     await new Promise(r=>setTimeout(r,0));
   }
@@ -499,10 +499,13 @@ async function ingest(files){
   evaluateReceiver();
 }
 
+// text/dot can carry attacker-supplied part filenames + manifest fields, so escape.
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
 function addLine(parent, dot, text, cls=''){
   const d = document.createElement('div');
   d.className = 'line' + (cls? ' '+cls : '');
-  d.innerHTML = `<span class="dot ${cls}">${dot}</span><span>${text}</span>`;
+  d.innerHTML = `<span class="dot ${cls}">${escapeHtml(dot)}</span><span>${escapeHtml(text)}</span>`;
   parent.appendChild(d);
 }
 

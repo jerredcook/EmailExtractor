@@ -43,4 +43,9 @@ See [`CLAUDE.md`](./CLAUDE.md) for the layout, commands, and the invariants wort
 
 ## License
 
-MIT — see [`LICENSE`](./LICENSE).
+Toolshed's own code is MIT — see [`LICENSE`](./LICENSE).
+
+Two tools vendor third-party components under their own licenses, listed in
+[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md). Note in particular that the
+**Media Converter** ships an FFmpeg WebAssembly build that is **GPL-licensed**
+(it includes libx264/libx265); that file is governed by the GPL, not MIT.
