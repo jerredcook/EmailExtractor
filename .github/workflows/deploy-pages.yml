@@ -1,0 +1,40 @@
+name: Deploy to GitHub Pages
+
+# Replaces the legacy "deploy from a branch" builder with an explicit,
+# concurrency-controlled deployment so rapid pushes can't collide (the cause
+# of the intermittent "Deployment failed, try again later" errors).
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: # allow manual re-runs from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push cancels an in-flight/hung run
+# cleanly (marked "cancelled", not "failure") so only the latest ships.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: . # whole repo root is the static site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
